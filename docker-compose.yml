@@ -1,0 +1,9 @@
+services:
+  hanna:
+    build: .
+    container_name: hanna-ai
+    restart: always
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs

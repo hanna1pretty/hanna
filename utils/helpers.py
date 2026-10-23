@@ -1,0 +1,400 @@
+import os
+import asyncio
+import logging
+import sqlite3
+from concurrent.futures import ThreadPoolExecutor
+from config import (
+    DEFAULT_MODEL, DEFAULT_MODELS, DEFAULT_PROVIDERS,
+    BASE_URL, TOP_TOOLS_KEY, ADMIN_IDS, INITIAL_CREDITS, MAX_HISTORY
+)
+
+logger  = logging.getLogger(__name__)
+DB_PATH = "data/hanna.db"
+
+# Thread pool khusus untuk DB — agar DB call tidak block event loop
+_db_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="db")
+
+# ─── DB CONNECTION ─────────────────────────────────────────────────
+def _get_conn() -> sqlite3.Connection:
+    os.makedirs("data", exist_ok=True)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=10)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")    # concurrent read/write
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA cache_size=-8000")    # 8 MB cache
+    conn.execute("PRAGMA temp_store=MEMORY")
+    return conn
+
+def _run_db(fn):
+    """Jalankan fungsi DB sinkron di thread pool, agar event loop tidak terblokir."""
+    return asyncio.get_event_loop().run_in_executor(_db_executor, fn)
+
+# ─── INIT DB ───────────────────────────────────────────────────────
+def _init_db_sync():
+    with _get_conn() as conn:
+        c = conn.cursor()
+        c.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id  INTEGER PRIMARY KEY,
+                model    TEXT NOT NULL,
+                bot_name TEXT DEFAULT 'default'
+            );
+            CREATE TABLE IF NOT EXISTS chat_history (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL,
+                bot_name   TEXT    DEFAULT 'default',
+                role       TEXT    NOT NULL,
+                content    TEXT    NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS settings (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS providers (
+                name     TEXT PRIMARY KEY,
+                base_url TEXT NOT NULL,
+                api_key  TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS models (
+                id        TEXT PRIMARY KEY,
+                cat       TEXT NOT NULL,
+                name      TEXT NOT NULL,
+                desc      TEXT NOT NULL,
+                in_price  REAL DEFAULT 0.0,
+                out_price REAL DEFAULT 0.0
+            );
+            CREATE TABLE IF NOT EXISTS usage_logs (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id           INTEGER NOT NULL,
+                bot_name          TEXT    DEFAULT 'default',
+                provider          TEXT    NOT NULL,
+                model             TEXT    NOT NULL,
+                prompt_tokens     INTEGER DEFAULT 0,
+                completion_tokens INTEGER DEFAULT 0,
+                cost_usd          REAL    DEFAULT 0.0,
+                created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_history_user ON chat_history(user_id, bot_name);
+            CREATE INDEX IF NOT EXISTS idx_usage_user   ON usage_logs(user_id);
+        """)
+
+        # Default settings
+        defaults = {
+            "active_provider": "toptools",
+            "base_url":        BASE_URL,
+            "api_key":         TOP_TOOLS_KEY,
+            "initial_credits": str(INITIAL_CREDITS),
+            "private_mode":    "1",
+        }
+        for k, v in defaults.items():
+            c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
+
+        # Default providers
+        for p in DEFAULT_PROVIDERS:
+            c.execute(
+                "INSERT OR IGNORE INTO providers (name, base_url, api_key) VALUES (?, ?, ?)",
+                (p["name"], p["base_url"], p["api_key"])
+            )
+        if TOP_TOOLS_KEY:
+            c.execute("UPDATE providers SET api_key=? WHERE name='toptools' AND api_key=''", (TOP_TOOLS_KEY,))
+            c.execute("UPDATE settings  SET value=?   WHERE key='api_key'  AND value=''",   (TOP_TOOLS_KEY,))
+
+        # Default models (hanya jika kosong)
+        if c.execute("SELECT COUNT(*) FROM models").fetchone()[0] == 0:
+            for m in DEFAULT_MODELS:
+                c.execute(
+                    "INSERT INTO models (id,cat,name,desc,in_price,out_price) VALUES (?,?,?,?,?,?)",
+                    (m["id"], m["cat"], m["name"], m["desc"], m.get("in_price",0.0), m.get("out_price",0.0))
+                )
+        conn.commit()
+    logger.info("Database initialized.")
+
+def init_db():
+    """Sync wrapper — dipanggil sekali saat startup."""
+    _init_db_sync()
+
+# ─── ADMIN & ACCESS ────────────────────────────────────────────────
+def is_admin(user_id: int) -> bool:
+    return (not ADMIN_IDS) or (user_id in ADMIN_IDS)
+
+def _get_private_mode_sync() -> bool:
+    with _get_conn() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key='private_mode'").fetchone()
+        return row["value"] == "1" if row else True
+
+async def is_private_mode_async() -> bool:
+    return await _run_db(_get_private_mode_sync)
+
+def is_private_mode() -> bool:          # untuk keyboard (sync context)
+    return _get_private_mode_sync()
+
+async def toggle_private_mode() -> bool:
+    current = await is_private_mode_async()
+    new_val = "0" if current else "1"
+    def _toggle():
+        with _get_conn() as conn:
+            conn.execute("INSERT OR REPLACE INTO settings (key,value) VALUES ('private_mode',?)", (new_val,))
+            conn.commit()
+    await _run_db(_toggle)
+    return new_val == "1"
+
+async def can_use_bot_async(user_id: int) -> bool:
+    return is_admin(user_id) or not await is_private_mode_async()
+
+def can_use_bot(user_id: int) -> bool:  # sync fallback
+    return is_admin(user_id) or not _get_private_mode_sync()
+
+def mask_key(key: str) -> str:
+    if not key:
+        return "NOT SET"
+    return f"{key[:6]}...{key[-4:]}" if len(key) > 10 else "***"
+
+# ─── KREDIT ────────────────────────────────────────────────────────
+async def set_initial_credits(amount: float):
+    def _set():
+        with _get_conn() as conn:
+            conn.execute("INSERT OR REPLACE INTO settings (key,value) VALUES ('initial_credits',?)", (str(amount),))
+            conn.execute("DELETE FROM usage_logs")
+            conn.commit()
+    await _run_db(_set)
+
+async def record_usage(user_id: int, provider: str, model_id: str,
+                       prompt_tokens: int, completion_tokens: int,
+                       fixed_cost: float = None, bot_name: str = "default"):
+    def _record():
+        with _get_conn() as conn:
+            if fixed_cost is not None:
+                cost = fixed_cost
+            else:
+                row = conn.execute(
+                    "SELECT in_price, out_price, cat FROM models WHERE id=?", (model_id,)
+                ).fetchone()
+                if row and row["cat"].lower() != "free":
+                    cost = (prompt_tokens / 1_000_000) * float(row["in_price"] or 1.0) \
+                         + (completion_tokens / 1_000_000) * float(row["out_price"] or 5.0)
+                else:
+                    cost = 0.0
+            conn.execute(
+                """INSERT INTO usage_logs
+                   (user_id,bot_name,provider,model,prompt_tokens,completion_tokens,cost_usd)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (user_id, bot_name, provider, model_id, prompt_tokens, completion_tokens, cost)
+            )
+            conn.commit()
+    await _run_db(_record)
+
+async def get_credit_summary() -> dict:
+    def _query():
+        with _get_conn() as conn:
+            row = conn.execute("SELECT value FROM settings WHERE key='initial_credits'").fetchone()
+            initial = float(row["value"]) if row else INITIAL_CREDITS
+            stat = conn.execute("""
+                SELECT COUNT(*)                           AS total_req,
+                       COALESCE(SUM(prompt_tokens),0)    AS total_in,
+                       COALESCE(SUM(completion_tokens),0) AS total_out,
+                       COALESCE(SUM(cost_usd),0.0)       AS total_spent
+                FROM usage_logs
+            """).fetchone()
+            spent     = float(stat["total_spent"])
+            remaining = max(0.0, initial - spent)
+            return {
+                "initial":       initial,
+                "spent":         spent,
+                "remaining":     remaining,
+                "requests":      stat["total_req"],
+                "input_tokens":  stat["total_in"],
+                "output_tokens": stat["total_out"],
+                "total_tokens":  stat["total_in"] + stat["total_out"],
+            }
+    return await _run_db(_query)
+
+def get_credit_summary_sync() -> dict:   # untuk keyboards
+    with _get_conn() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key='initial_credits'").fetchone()
+        initial = float(row["value"]) if row else INITIAL_CREDITS
+        stat = conn.execute("""
+            SELECT COUNT(*)                           AS total_req,
+                   COALESCE(SUM(prompt_tokens),0)    AS total_in,
+                   COALESCE(SUM(completion_tokens),0) AS total_out,
+                   COALESCE(SUM(cost_usd),0.0)       AS total_spent
+            FROM usage_logs
+        """).fetchone()
+        spent = float(stat["total_spent"])
+        return {
+            "initial": initial, "spent": spent,
+            "remaining": max(0.0, initial - spent),
+            "requests": stat["total_req"],
+            "input_tokens": stat["total_in"], "output_tokens": stat["total_out"],
+            "total_tokens": stat["total_in"] + stat["total_out"],
+        }
+
+# ─── API & PROVIDER ────────────────────────────────────────────────
+def get_active_api() -> dict:           # sync — dipanggil dari AI module
+    with _get_conn() as conn:
+        rows = {r["key"]: r["value"] for r in conn.execute("SELECT key,value FROM settings").fetchall()}
+    return {
+        "provider": rows.get("active_provider", "toptools"),
+        "base_url": rows.get("base_url", BASE_URL).rstrip("/"),
+        "api_key":  rows.get("api_key", TOP_TOOLS_KEY),
+    }
+
+async def set_api_key(new_key: str):
+    active = get_active_api()["provider"]
+    def _set():
+        with _get_conn() as conn:
+            conn.execute("INSERT OR REPLACE INTO settings (key,value) VALUES ('api_key',?)", (new_key.strip(),))
+            conn.execute("UPDATE providers SET api_key=? WHERE name=?", (new_key.strip(), active))
+            conn.commit()
+    await _run_db(_set)
+
+async def set_base_url(new_url: str):
+    clean  = new_url.strip().rstrip("/")
+    active = get_active_api()["provider"]
+    def _set():
+        with _get_conn() as conn:
+            conn.execute("INSERT OR REPLACE INTO settings (key,value) VALUES ('base_url',?)", (clean,))
+            conn.execute("UPDATE providers SET base_url=? WHERE name=?", (clean, active))
+            conn.commit()
+    await _run_db(_set)
+
+async def save_provider(name: str, base_url: str, api_key: str):
+    pname     = name.strip().lower()
+    clean_url = base_url.strip().rstrip("/")
+    clean_key = api_key.strip()
+    def _save():
+        with _get_conn() as conn:
+            conn.execute("INSERT OR REPLACE INTO providers (name,base_url,api_key) VALUES (?,?,?)",
+                         (pname, clean_url, clean_key))
+            for k, v in [("active_provider",pname),("base_url",clean_url),("api_key",clean_key)]:
+                conn.execute("INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)", (k, v))
+            conn.commit()
+    await _run_db(_save)
+
+async def switch_provider(name: str) -> tuple:
+    pname = name.strip().lower()
+    def _switch():
+        with _get_conn() as conn:
+            row = conn.execute(
+                "SELECT name,base_url,api_key FROM providers WHERE name=?", (pname,)
+            ).fetchone()
+            if not row:
+                return False, "Provider not found."
+            for k, v in [("active_provider",row["name"]),("base_url",row["base_url"]),("api_key",row["api_key"])]:
+                conn.execute("INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)", (k, v))
+            conn.commit()
+            return True, dict(row)
+    return await _run_db(_switch)
+
+def get_providers() -> list:            # sync — untuk keyboard
+    with _get_conn() as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT name,base_url,api_key FROM providers ORDER BY name ASC"
+        ).fetchall()]
+
+# ─── MODEL ─────────────────────────────────────────────────────────
+def get_all_models(cat: str = "All") -> list:   # sync — untuk keyboard
+    with _get_conn() as conn:
+        if cat == "All":
+            rows = conn.execute("SELECT * FROM models").fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM models WHERE cat=?", (cat,)).fetchall()
+        return [dict(r) for r in rows]
+
+async def add_custom_model(model_id: str, cat: str, name: str,
+                           in_price: float = 1.0, out_price: float = 5.0):
+    desc = "Free Model" if cat.lower() == "free" else f"${in_price:.2f}/1M in - ${out_price:.2f}/1M out"
+    def _add():
+        with _get_conn() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO models (id,cat,name,desc,in_price,out_price) VALUES (?,?,?,?,?,?)",
+                (model_id.strip(), cat.strip(), name.strip(), desc, in_price, out_price)
+            )
+            conn.commit()
+    await _run_db(_add)
+
+async def delete_custom_model(model_id: str) -> bool:
+    def _del():
+        with _get_conn() as conn:
+            conn.execute("DELETE FROM models WHERE id=?", (model_id.strip(),))
+            deleted = conn.execute("SELECT changes()").fetchone()[0] > 0
+            conn.commit()
+            return deleted
+    return await _run_db(_del)
+
+# ─── USER & HISTORY ────────────────────────────────────────────────
+async def get_model_async(uid: int, bot_name: str = "default") -> str:
+    def _get():
+        with _get_conn() as conn:
+            row = conn.execute(
+                "SELECT model FROM users WHERE user_id=? AND bot_name=?", (uid, bot_name)
+            ).fetchone()
+            if not row:
+                conn.execute(
+                    "INSERT INTO users (user_id,model,bot_name) VALUES (?,?,?)",
+                    (uid, DEFAULT_MODEL, bot_name)
+                )
+                conn.commit()
+                return DEFAULT_MODEL
+            return row["model"]
+    return await _run_db(_get)
+
+def get_model(uid: int, bot_name: str = "default") -> str:   # sync fallback untuk keyboard
+    with _get_conn() as conn:
+        row = conn.execute(
+            "SELECT model FROM users WHERE user_id=? AND bot_name=?", (uid, bot_name)
+        ).fetchone()
+        if not row:
+            conn.execute("INSERT INTO users (user_id,model,bot_name) VALUES (?,?,?)",
+                         (uid, DEFAULT_MODEL, bot_name))
+            conn.commit()
+            return DEFAULT_MODEL
+        return row["model"]
+
+async def set_model(uid: int, model_id: str, bot_name: str = "default"):
+    def _set():
+        with _get_conn() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO users (user_id,model,bot_name) VALUES (?,?,?)",
+                (uid, model_id, bot_name)
+            )
+            conn.commit()
+    await _run_db(_set)
+
+async def get_history(uid: int, bot_name: str = "default") -> list:
+    def _get():
+        with _get_conn() as conn:
+            rows = conn.execute(
+                """SELECT role,content FROM chat_history
+                   WHERE user_id=? AND bot_name=?
+                   ORDER BY id DESC LIMIT ?""",
+                (uid, bot_name, MAX_HISTORY)
+            ).fetchall()
+            return [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
+    return await _run_db(_get)
+
+async def add_history(uid: int, role: str, content: str, bot_name: str = "default"):
+    def _add():
+        with _get_conn() as conn:
+            conn.execute(
+                "INSERT INTO chat_history (user_id,bot_name,role,content) VALUES (?,?,?,?)",
+                (uid, bot_name, role, content)
+            )
+            conn.execute("""
+                DELETE FROM chat_history
+                WHERE user_id=? AND bot_name=? AND id NOT IN (
+                    SELECT id FROM chat_history WHERE user_id=? AND bot_name=?
+                    ORDER BY id DESC LIMIT ?
+                )
+            """, (uid, bot_name, uid, bot_name, MAX_HISTORY))
+            conn.commit()
+    await _run_db(_add)
+
+async def clear_history(uid: int, bot_name: str = "default"):
+    def _clear():
+        with _get_conn() as conn:
+            conn.execute(
+                "DELETE FROM chat_history WHERE user_id=? AND bot_name=?", (uid, bot_name)
+            )
+            conn.commit()
+    await _run_db(_clear)
