@@ -1,22 +1,46 @@
+import math
 import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # ─── CORE BOT CONFIG ───────────────────────────────────────────────
-BOT_TOKEN   = os.getenv("BOT_TOKEN", "")
-API_ID      = int(os.getenv("API_ID", "0"))
-API_HASH    = os.getenv("API_HASH", "")
+BOT_TOKEN   = os.getenv("BOT_TOKEN", "").strip()
+API_HASH    = os.getenv("API_HASH", "").strip()
+
+def _required_int(name: str) -> int:
+    raw = os.getenv(name, "").strip()
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a valid integer") from exc
+    if value <= 0:
+        raise ValueError(f"{name} must be greater than zero")
+    return value
+
+API_ID = _required_int("API_ID")
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN is required")
+if not API_HASH:
+    raise ValueError("API_HASH is required")
 
 # Multiple bots: BOT_TOKEN_2, BOT_TOKEN_3, dst (opsional)
 EXTRA_TOKENS = [
-    v.strip() for k, v in os.environ.items()
-    if k.startswith("BOT_TOKEN_") and v.strip()
+    os.environ[k].strip() for k in sorted(os.environ)
+    if re.fullmatch(r"BOT_TOKEN_[2-9][0-9]*", k) and os.environ[k].strip()
 ]
 
 # ─── ADMIN & ACCESS ────────────────────────────────────────────────
-raw_admins  = os.getenv("ADMIN_ID", "0")
-ADMIN_IDS   = [int(x.strip()) for x in raw_admins.split(",") if x.strip().isdigit()]
+raw_admins = os.getenv("ADMIN_ID", "").strip()
+if not raw_admins:
+    raise ValueError("ADMIN_ID is required; use /myid in Telegram to find it")
+try:
+    ADMIN_IDS = [int(x.strip()) for x in raw_admins.split(",")]
+except ValueError as exc:
+    raise ValueError("ADMIN_ID must contain comma-separated numeric Telegram IDs") from exc
+if any(value <= 0 for value in ADMIN_IDS):
+    raise ValueError("ADMIN_ID must contain positive Telegram IDs")
 
 # ─── API / PROVIDER ────────────────────────────────────────────────
 TOP_TOOLS_KEY = os.getenv("TOP_TOOLS_API_KEY", "")
@@ -33,6 +57,15 @@ MAX_HISTORY = int(os.getenv("MAX_HISTORY", "20"))
 API_TIMEOUT  = int(os.getenv("API_TIMEOUT", "120"))
 API_RETRIES  = int(os.getenv("API_RETRIES", "3"))
 RETRY_DELAY  = float(os.getenv("RETRY_DELAY", "2.0"))
+MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", "10485760"))
+MAX_PROMPT_LENGTH = int(os.getenv("MAX_PROMPT_LENGTH", "4000"))
+
+if not math.isfinite(INITIAL_CREDITS) or INITIAL_CREDITS < 0:
+    raise ValueError("INITIAL_CREDITS must be a finite non-negative number")
+if MAX_HISTORY <= 0 or API_TIMEOUT <= 0 or API_RETRIES <= 0 or RETRY_DELAY < 0:
+    raise ValueError("MAX_HISTORY, API_TIMEOUT, API_RETRIES must be positive and RETRY_DELAY non-negative")
+if MAX_IMAGE_BYTES <= 0 or MAX_PROMPT_LENGTH <= 0:
+    raise ValueError("MAX_IMAGE_BYTES and MAX_PROMPT_LENGTH must be positive")
 
 # ─── SYSTEM PROMPT ─────────────────────────────────────────────────
 SYSTEM_PROMPT = os.getenv(

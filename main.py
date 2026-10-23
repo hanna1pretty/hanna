@@ -55,22 +55,20 @@ async def main_async():
         clients.append(app)
         logger.info(f"Extra bot {idx} registered.")
 
-    if not clients:
-        logger.error("No BOT_TOKEN found! Set BOT_TOKEN in .env")
-        return
-
     logger.info(f"Starting {len(clients)} bot(s)...")
 
-    # Jalankan semua bot secara bersamaan
-    await asyncio.gather(*[app.start() for app in clients])
-    logger.info("All bots running. Press Ctrl+C to stop.")
-
     try:
+        # Jalankan semua bot secara bersamaan
+        await asyncio.gather(*[app.start() for app in clients])
+        logger.info("All bots running. Press Ctrl+C to stop.")
         await asyncio.get_event_loop().create_future()  # run forever
     except (KeyboardInterrupt, asyncio.CancelledError):
         logger.info("Shutting down...")
     finally:
-        await asyncio.gather(*[app.stop() for app in clients])
+        await asyncio.gather(
+            *[app.stop() for app in clients if app.is_connected],
+            return_exceptions=True,
+        )
         logger.info("All bots stopped.")
 
 if __name__ == "__main__":

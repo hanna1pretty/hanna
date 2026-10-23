@@ -29,8 +29,8 @@ async def _post_with_retry(url: str, headers: dict, payload: dict) -> dict:
                         await asyncio.sleep(wait)
                         continue
                     if resp.status != 200:
-                        err = await resp.text()
-                        raise RuntimeError(f"API Error ({resp.status}): {err[:300]}")
+                        await resp.read()
+                        raise RuntimeError(f"API request failed with status {resp.status}")
                     return await resp.json()
         except aiohttp.ClientConnectorError as e:
             last_err = e
@@ -80,11 +80,11 @@ async def chat_completion(uid: int, model: str, history: list,
         logger.error(f"Unexpected API response: {e}")
         return "⚠️ Unexpected response format from API."
     except RuntimeError as e:
-        logger.error(f"API runtime error: {e}")
-        return f"⚠️ {e}"
-    except Exception as e:
-        logger.exception(f"Unhandled error in chat_completion uid={uid}: {e}")
-        return f"⚠️ Error: {e}"
+        logger.error("API runtime error: %s", e)
+        return "⚠️ API sedang tidak dapat digunakan. Coba lagi nanti."
+    except Exception:
+        logger.exception("Unhandled error in chat_completion uid=%s", uid)
+        return "⚠️ Terjadi kesalahan saat menghubungi AI. Coba lagi nanti."
 
 # ─── VISION ────────────────────────────────────────────────────────
 async def vision_completion(uid: int, model: str, prompt: str,
@@ -122,9 +122,9 @@ async def vision_completion(uid: int, model: str, prompt: str,
             record_usage(uid, provider, vision_model, int(p_tokens), int(c_tokens), bot_name=bot_name)
         )
         return reply
-    except Exception as e:
-        logger.exception(f"Vision error uid={uid}: {e}")
-        return f"⚠️ Vision Error: {e}"
+    except Exception:
+        logger.exception("Vision error uid=%s", uid)
+        return "⚠️ Gagal menganalisis gambar. Coba lagi nanti."
 
 # ─── IMAGE GENERATION ──────────────────────────────────────────────
 async def generate_image(uid: int, prompt: str, bot_name: str = "default") -> str:

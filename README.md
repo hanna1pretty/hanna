@@ -1,0 +1,190 @@
+# Hanna AI Bot
+
+Bot Telegram berbasis [Pyrogram](https://docs.pyrogram.org/) yang menyediakan chat AI, vision, image generation, pilihan model, pencatatan pemakaian kredit, serta pengaturan provider melalui menu admin.
+
+> **Status deployment:** kode ini sudah diaudit secara statis dan diperketat untuk deployment VPS. Tetap lakukan uji fungsional dengan bot dan API key milik Anda sebelum membuka akses publik.
+
+## Fitur
+
+- Chat AI melalui pesan privat Telegram.
+- Analisis foto dengan caption atau prompt default.
+- Image generation melalui endpoint OpenAI-compatible.
+- Beberapa model dan provider yang dapat dipilih.
+- Mode `ADMIN ONLY` sebagai default.
+- Riwayat chat, model pilihan user, usage log, dan credit tracker di SQLite.
+- Dukungan bot tambahan melalui `BOT_TOKEN_2`, `BOT_TOKEN_3`, dan seterusnya.
+- Docker Compose dengan volume data/log, restart policy, dan healthcheck.
+
+## Persyaratan
+
+- VPS Linux dengan Docker Engine dan Docker Compose v2 (`docker compose`).
+- Bot Telegram yang dibuat melalui [@BotFather](https://t.me/BotFather).
+- Telegram `API_ID` dan `API_HASH` dari [my.telegram.org](https://my.telegram.org/).
+- API key dari provider AI yang mendukung endpoint OpenAI-compatible.
+- Domain atau port publik **tidak diperlukan** karena bot menggunakan koneksi keluar (long polling).
+
+## Instalasi cepat di VPS
+
+```bash
+git clone https://github.com/hanna1pretty/hanna.git
+cd hanna
+cp .env.example .env
+nano .env
+mkdir -p data logs
+docker compose up -d --build
+docker compose ps
+docker compose logs -f --tail=100
+```
+
+Jangan mengunggah atau meng-commit file `.env`. File tersebut sudah masuk `.gitignore` dan `.dockerignore`.
+
+## Konfigurasi `.env`
+
+Isi minimal berikut sebelum menjalankan container:
+
+```dotenv
+BOT_TOKEN=123456789:token-dari-botfather
+API_ID=12345678
+API_HASH=hash-dari-my.telegram.org
+ADMIN_ID=123456789
+```
+
+Variabel penting lainnya:
+
+| Variabel | Wajib | Default | Keterangan |
+|---|---:|---:|---|
+| `BOT_TOKEN` | Ya | - | Token bot utama dari BotFather. |
+| `API_ID` | Ya | - | Angka dari my.telegram.org. |
+| `API_HASH` | Ya | - | Hash dari my.telegram.org. |
+| `ADMIN_ID` | Ya | - | ID Telegram admin; dapat berisi beberapa ID dipisah koma. |
+| `TOP_TOOLS_API_KEY` | Tidak | kosong | API key provider awal. Jika kosong, set melalui `/setkey`. |
+| `BASE_URL` | Tidak | `https://top-tools-ai.com/api/v1` | Base URL OpenAI-compatible provider awal. |
+| `INITIAL_CREDITS` | Tidak | `220.00` | Saldo acuan untuk credit tracker lokal. |
+| `MAX_HISTORY` | Tidak | `20` | Jumlah pesan history per user dan bot. |
+| `API_TIMEOUT` | Tidak | `120` | Timeout request provider dalam detik. |
+| `API_RETRIES` | Tidak | `3` | Jumlah percobaan request. |
+| `RETRY_DELAY` | Tidak | `2.0` | Jeda retry dalam detik. |
+| `MAX_IMAGE_BYTES` | Tidak | `10485760` | Batas foto vision, default 10 MiB. |
+| `MAX_PROMPT_LENGTH` | Tidak | `4000` | Batas caption/prompt vision. |
+| `BOT_TOKEN_2` | Tidak | kosong | Bot tambahan kedua, jika diperlukan. |
+
+Bot akan **gagal start dengan sengaja** jika `BOT_TOKEN`, `API_ID`, `API_HASH`, atau `ADMIN_ID` belum valid. Ini mencegah konfigurasi kosong membuat akses admin terbuka kepada semua orang.
+
+## Setelah bot hidup
+
+1. Kirim `/start` dari akun admin.
+2. Kirim `/myid` bila perlu mengetahui Telegram ID.
+3. Buka `API Settings` atau kirim `/api`.
+4. Atur key dengan `/setkey <API_KEY>` jika belum mengisi `TOP_TOOLS_API_KEY`.
+5. Atur provider lain dengan format:
+
+   ```text
+   /setprovider openrouter https://openrouter.ai/api/v1 sk-or-xxxx
+   ```
+
+6. Uji chat biasa, `/img sebuah rumah futuristik`, dan foto privat dengan caption.
+7. Biarkan mode `ADMIN ONLY` selama pengujian. Aktifkan mode publik hanya setelah biaya, rate limit, dan provider sudah dipastikan.
+
+> API key yang dimasukkan lewat `/setkey` atau `/setprovider` disimpan di SQLite pada volume `./data`. Batasi akses VPS dan backup file tersebut.
+
+## Operasional Docker
+
+```bash
+# Status dan health
+sudo docker compose ps
+sudo docker inspect --format '{{json .State.Health}}' hanna-ai
+
+# Log aplikasi
+sudo docker compose logs -f --tail=200 hanna
+# Log file di host
+sudo tail -f logs/hanna.log
+
+# Update dari GitHub
+sudo docker compose down
+git pull --ff-only
+sudo docker compose up -d --build
+sudo docker compose ps
+
+# Restart tanpa build ulang
+sudo docker compose restart
+
+# Stop
+sudo docker compose down
+```
+
+Container tidak mengekspos port HTTP. Healthcheck hanya memastikan SQLite dapat dibuka; status `healthy` bukan pengganti pengujian Telegram/API secara berkala.
+
+## Backup dan restore
+
+Database, session, dan log berada di host pada folder `data/` dan `logs/`. Backup sebelum update besar atau perubahan konfigurasi:
+
+```bash
+sudo docker compose stop
+sudo tar -czf "hanna-backup-$(date +%F-%H%M).tar.gz" data logs .env
+sudo docker compose start
+```
+
+Untuk restore, hentikan container terlebih dahulu, ekstrak backup ke folder project, lalu jalankan kembali:
+
+```bash
+sudo docker compose down
+sudo tar -xzf hanna-backup-YYYY-MM-DD-HHMM.tar.gz
+sudo docker compose up -d
+```
+
+Jangan menyimpan backup `.env` atau `data/hanna.db` di repository publik. Simpan backup di lokasi terenkripsi dengan permission terbatas, misalnya `chmod 600` untuk file secret.
+
+## Keamanan dan batasan penting
+
+- `.env`, database, session Pyrogram, WAL/SHM SQLite, cache, dan log dikecualikan dari Git serta Docker build context.
+- Foto vision dibatasi 10 MiB secara default dan hanya diproses dari chat privat.
+- Pesan error internal/provider tidak dikirim mentah ke pengguna; detailnya hanya ada di log server.
+- Semua command admin menggunakan `ADMIN_ID`; jangan mengosongkannya.
+- Bot ini ditujukan untuk chat privat. Handler image dan vision tidak memproses grup.
+- API key provider tersimpan plaintext di SQLite agar fitur pergantian provider dari Telegram dapat bekerja. Lindungi volume `data/`, akses SSH, dan backup.
+- Jangan mengekspos `logs/` melalui web server publik.
+- Gunakan firewall VPS dan nonaktifkan login SSH berbasis password jika sudah memiliki akses key.
+- Rotasikan/revoke token BotFather dan API key bila pernah tampil di chat, log, screenshot, atau backup tidak aman.
+
+## Troubleshooting
+
+### Container langsung restart
+
+```bash
+docker compose logs --tail=200 hanna
+```
+
+Biasanya penyebabnya adalah `BOT_TOKEN`, `API_ID`, `API_HASH`, atau `ADMIN_ID` belum diisi/formatnya salah. Pastikan `.env` berada di direktori yang sama dengan `docker-compose.yml`.
+
+### `API Key ... belum diatur`
+
+Isi `TOP_TOOLS_API_KEY` lalu rebuild/restart, atau masuk sebagai admin dan gunakan `/setkey <API_KEY>`. Pastikan `BASE_URL` sesuai API provider dan berakhir pada path yang benar, biasanya `/v1`.
+
+### API error 401/403
+
+Periksa provider aktif, key, base URL, dan apakah model tersebut tersedia untuk akun provider. Jangan menaruh key di source code. Setelah rotasi key, restart container atau set ulang lewat `/setkey`.
+
+### Telegram tidak merespons
+
+Periksa token BotFather, status container, waktu sistem VPS, koneksi outbound HTTPS, serta apakah token sedang dipakai oleh proses lain. Jangan menjalankan dua instance dengan bot token yang sama.
+
+### Migrasi database setelah update
+
+Pada start, aplikasi mendeteksi schema users lama dan memigrasikannya ke primary key gabungan `(user_id, bot_name)` untuk dukungan multi-bot. Tetap backup `data/hanna.db` sebelum update. Jika migrasi gagal, hentikan container dan pulihkan backup.
+
+## Audit yang sudah dilakukan
+
+- Validasi sintaks seluruh modul Python.
+- Pemeriksaan dependency langsung terhadap `requirements.txt`.
+- Fail-fast untuk environment wajib dan fail-closed untuk akses admin.
+- Perbaikan schema SQLite multi-bot serta migrasi database lama.
+- Perlindungan Docker context dengan `.dockerignore`.
+- Pembatasan ukuran foto dan prompt.
+- Filter private chat untuk image/vision.
+- Pengurangan kebocoran error provider ke pengguna.
+- Validasi model callback sebelum disimpan.
+- Cleanup client Telegram saat startup/shutdown tidak sempurna.
+
+## Lisensi
+
+Belum ditentukan. Tambahkan file `LICENSE` jika repository ini akan dibagikan atau digunakan oleh pihak lain.

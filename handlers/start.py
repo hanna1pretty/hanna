@@ -8,7 +8,7 @@ from utils.helpers import (
     set_model, get_model, clear_history,
     get_active_api, mask_key, switch_provider,
     is_admin, can_use_bot_async, is_private_mode, toggle_private_mode,
-    get_credit_summary_sync, get_credit_summary
+    get_credit_summary_sync, get_credit_summary, model_exists
 )
 from utils.ai import check_live_api_balance
 
@@ -149,6 +149,8 @@ def register(app, bot_name: str = "default"):
 
         elif d.startswith("setmodel_"):
             mid = d.split("setmodel_", 1)[1]
+            if not mid or len(mid) > 120 or not model_exists(mid):
+                return await q.answer("Model tidak tersedia.", show_alert=True)
             await set_model(uid, mid, bot_name)
             await q.answer(f"Model changed to {mid}", show_alert=True)
             await safe_edit(q.message,

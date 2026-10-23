@@ -4,6 +4,12 @@ services:
     container_name: hanna-ai
     restart: always
     env_file: .env
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sqlite3; sqlite3.connect('data/hanna.db').execute('SELECT 1').fetchone()\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs

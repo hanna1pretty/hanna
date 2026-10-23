@@ -48,6 +48,6 @@ def register(app, bot_name: str = "default"):
                 for i in range(0, len(reply), 4096):
                     await m.reply_text(reply[i:i+4096])
 
-        except Exception as e:
-            logger.exception(f"chat_handler error uid={uid}: {e}")
-            await wait_msg.edit_text(f"⚠️ Error: {e}")
+        except Exception:
+            logger.exception("chat_handler error uid=%s", uid)
+            await wait_msg.edit_text("⚠️ Terjadi kesalahan saat memproses pesan. Coba lagi nanti.")

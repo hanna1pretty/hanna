@@ -1,0 +1,15 @@
+.env
+.env.*
+.git
+.gitignore
+data/
+logs/
+*.db
+*.db-wal
+*.db-shm
+*.session
+*.session-journal
+__pycache__/
+*.py[cod]
+.venv/
+venv/

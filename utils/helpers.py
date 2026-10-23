@@ -35,9 +35,10 @@ def _init_db_sync():
         c = conn.cursor()
         c.executescript("""
             CREATE TABLE IF NOT EXISTS users (
-                user_id  INTEGER PRIMARY KEY,
+                user_id  INTEGER NOT NULL,
                 model    TEXT NOT NULL,
-                bot_name TEXT DEFAULT 'default'
+                bot_name TEXT NOT NULL DEFAULT 'default',
+                PRIMARY KEY (user_id, bot_name)
             );
             CREATE TABLE IF NOT EXISTS chat_history (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,6 +80,24 @@ def _init_db_sync():
             CREATE INDEX IF NOT EXISTS idx_usage_user   ON usage_logs(user_id);
         """)
 
+        # Migrate the original single-column primary key without deleting data.
+        user_columns = c.execute("PRAGMA table_info(users)").fetchall()
+        pk_columns = [row[1] for row in user_columns if row[5]]
+        if pk_columns == ["user_id"]:
+            c.executescript("""
+                ALTER TABLE users RENAME TO users_legacy;
+                CREATE TABLE users (
+                    user_id  INTEGER NOT NULL,
+                    model    TEXT NOT NULL,
+                    bot_name TEXT NOT NULL DEFAULT 'default',
+                    PRIMARY KEY (user_id, bot_name)
+                );
+                INSERT OR IGNORE INTO users (user_id, model, bot_name)
+                    SELECT user_id, model, COALESCE(bot_name, 'default') FROM users_legacy;
+                DROP TABLE users_legacy;
+            """)
+            logger.info("Migrated users table to composite (user_id, bot_name) key.")
+
         # Default settings
         defaults = {
             "active_provider": "toptools",
@@ -116,7 +135,8 @@ def init_db():
 
 # ─── ADMIN & ACCESS ────────────────────────────────────────────────
 def is_admin(user_id: int) -> bool:
-    return (not ADMIN_IDS) or (user_id in ADMIN_IDS)
+    # Fail closed: an empty admin list must never grant administrator access.
+    return bool(ADMIN_IDS) and user_id in ADMIN_IDS
 
 def _get_private_mode_sync() -> bool:
     with _get_conn() as conn:
@@ -293,13 +313,17 @@ def get_providers() -> list:            # sync — untuk keyboard
         ).fetchall()]
 
 # ─── MODEL ─────────────────────────────────────────────────────────
-def get_all_models(cat: str = "All") -> list:   # sync — untuk keyboard
+def get_all_models(cat: str = "All") -> list:   # sync — для keyboard
     with _get_conn() as conn:
         if cat == "All":
             rows = conn.execute("SELECT * FROM models").fetchall()
         else:
             rows = conn.execute("SELECT * FROM models WHERE cat=?", (cat,)).fetchall()
         return [dict(r) for r in rows]
+
+def model_exists(model_id: str) -> bool:
+    with _get_conn() as conn:
+        return conn.execute("SELECT 1 FROM models WHERE id=?", (model_id,)).fetchone() is not None
 
 async def add_custom_model(model_id: str, cat: str, name: str,
                            in_price: float = 1.0, out_price: float = 5.0):
