@@ -181,6 +181,8 @@ Menu `/start` sekarang menampilkan nama lengkap Telegram dengan fallback yang ra
 
 Bot dapat membaca file privat berformat TXT, MD, CSV, JSON, LOG, dan PDF. Ukuran file dibatasi 5 MB dan hasil ekstraksi dibatasi 20.000 karakter sebelum dikirim ke model. Isi file diperlakukan sebagai data untuk dianalisis, bukan sebagai instruksi sistem. File sementara dihapus setelah diproses.
 
+Untuk mengaktifkan fitur ini setelah update, rebuild container agar dependency `pypdf` terpasang. Setelah bot aktif, tekan tombol `Baca File` atau langsung kirim file privat ke bot. Tambahkan caption berisi tugas, misalnya `Ringkas dalam 5 poin`. Untuk pengiriman dokumen keluar, gunakan `/export`; Hanna akan mengirim riwayat chat pengguna sebagai file TXT. Fitur ini tidak membutuhkan folder publik atau URL download.
+
 Halaman Balance memisahkan `Provider Balance` dari `Local Estimasi`. Dokumentasi Top Tools AI menyediakan endpoint chat/image dan batas penggunaan, tetapi tidak mendokumentasikan endpoint publik khusus untuk saldo akun. Karena itu bot tidak akan mengklaim tracker SQLite sebagai saldo provider. Tombol `Refresh Balance` tetap mencoba endpoint yang tersedia; jika tidak ada respons resmi, gunakan dashboard Top Tools untuk saldo aktual.
 
 Chat teks sekarang meminta mode SSE streaming. Hanna mengedit pesan Telegram secara berkala, bukan untuk setiap token, agar respons mulai terlihat lebih cepat tanpa memicu FloodWait. Jika provider tidak mendukung streaming atau gagal sebelum token pertama, bot otomatis memakai mode non-streaming. Jika stream terputus setelah sebagian teks diterima, bot tidak mengulang request secara otomatis agar tidak berisiko menggandakan biaya.

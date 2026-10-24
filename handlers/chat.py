@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 TELEGRAM_LIMIT = 4096
 
 RESERVED_COMMANDS = [
-    "start", "myid", "clear", "img", "image", "help",
+    "start", "myid", "clear", "export", "img", "image", "help",
     "api", "apikey", "balance", "saldo", "limits", "setbalance",
     "setkey", "seturl", "setprovider", "addmodel", "delmodel",
 ]

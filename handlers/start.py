@@ -202,7 +202,8 @@ def register(app, bot_name: str = "default"):
             await q.answer()
             await safe_edit(q.message,
                 "<b>BACA FILE</b>\n\nKirim file TXT, MD, CSV, JSON, LOG, atau PDF di chat privat ini.\n"
-                "Ukuran maksimum 5 MB.", reply_markup=kb.back_commands_keyboard(),
+                "Ukuran maksimum 5 MB. Gunakan /export untuk menerima riwayat chat sebagai TXT.",
+                reply_markup=kb.back_commands_keyboard(),
                 parse_mode=ParseMode.HTML)
 
         elif d in ("cmd_limits", "refresh_limits"):
@@ -219,6 +220,7 @@ def register(app, bot_name: str = "default"):
                 "/balance — Cek balance provider\n"
                 "/api — Pengaturan API (admin)\n"
                 "/img &lt;prompt&gt; — Buat gambar\n"
+                "/export — Kirim riwayat chat sebagai TXT\n"
                 "/clear — Hapus riwayat chat\n\n"
                 "Untuk membaca file, kirim TXT, CSV, JSON, LOG, atau PDF secara langsung.",
                 reply_markup=kb.back_commands_keyboard(), parse_mode=ParseMode.HTML)

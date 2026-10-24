@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import io
 import json
 import logging
 import os
@@ -41,6 +42,26 @@ def _extract_text(path: str, filename: str) -> str:
 
 
 def register(app, bot_name: str = "default"):
+    @app.on_message(filters.command("export") & filters.private)
+    async def export_handler(c, m):
+        uid = m.from_user.id
+        if not await can_use_bot_async(uid):
+            return await m.reply_text("Akses ditolak. Bot sedang dalam mode admin only.")
+        history = await get_history(uid, bot_name)
+        if not history:
+            return await m.reply_text("Riwayat chat masih kosong.")
+        lines = ["HANNA AI — RIWAYAT CHAT", ""]
+        for item in history:
+            role = "Pengguna" if item["role"] == "user" else "Hanna AI"
+            lines.extend([f"[{role}]", item["content"], ""])
+        payload = io.BytesIO("\n".join(lines).encode("utf-8"))
+        payload.name = f"hanna-chat-{uid}.txt"
+        await m.reply_document(
+            document=payload,
+            file_name=payload.name,
+            caption="Berikut export riwayat chat kamu.",
+        )
+
     @app.on_message(filters.document & filters.private)
     async def file_handler(c, m):
         uid = m.from_user.id
