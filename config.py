@@ -61,13 +61,15 @@ MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", "10485760"))
 MAX_PROMPT_LENGTH = int(os.getenv("MAX_PROMPT_LENGTH", "4000"))
 MAX_FILE_BYTES = int(os.getenv("MAX_FILE_BYTES", "5242880"))
 MAX_EXTRACTED_CHARS = int(os.getenv("MAX_EXTRACTED_CHARS", "20000"))
+STREAM_UPDATE_INTERVAL = float(os.getenv("STREAM_UPDATE_INTERVAL", "0.8"))
 
 if not math.isfinite(INITIAL_CREDITS) or INITIAL_CREDITS < 0:
     raise ValueError("INITIAL_CREDITS must be a finite non-negative number")
 if MAX_HISTORY <= 0 or API_TIMEOUT <= 0 or API_RETRIES <= 0 or RETRY_DELAY < 0:
     raise ValueError("MAX_HISTORY, API_TIMEOUT, API_RETRIES must be positive and RETRY_DELAY non-negative")
-if MAX_IMAGE_BYTES <= 0 or MAX_PROMPT_LENGTH <= 0 or MAX_FILE_BYTES <= 0 or MAX_EXTRACTED_CHARS <= 0:
-    raise ValueError("MAX_IMAGE_BYTES, MAX_PROMPT_LENGTH, MAX_FILE_BYTES and MAX_EXTRACTED_CHARS must be positive")
+if (MAX_IMAGE_BYTES <= 0 or MAX_PROMPT_LENGTH <= 0 or MAX_FILE_BYTES <= 0
+        or MAX_EXTRACTED_CHARS <= 0 or STREAM_UPDATE_INTERVAL <= 0):
+    raise ValueError("File/image/prompt limits and STREAM_UPDATE_INTERVAL must be positive")
 
 # ─── SYSTEM PROMPT ─────────────────────────────────────────────────
 SYSTEM_PROMPT = os.getenv(

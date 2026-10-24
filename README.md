@@ -63,7 +63,8 @@ Variabel penting lainnya:
 | `MAX_HISTORY` | Tidak | `20` | Jumlah pesan history per user dan bot. |
 | `API_TIMEOUT` | Tidak | `60` | Timeout request provider dalam detik. |
 | `API_RETRIES` | Tidak | `2` | Jumlah percobaan request. |
-| `RETRY_DELAY` | Tidak | `2.0` | Jeda retry dalam detik. |
+| `RETRY_DELAY` | Tidak | `2.0` | Jeda antar retry dalam detik. |
+| `STREAM_UPDATE_INTERVAL` | Tidak | `0.8` | Interval minimum edit pesan Telegram saat streaming. |
 | `MAX_IMAGE_BYTES` | Tidak | `10485760` | Batas foto vision, default 10 MiB. |
 | `MAX_PROMPT_LENGTH` | Tidak | `4000` | Batas caption/prompt vision. |
 | `MAX_FILE_BYTES` | Tidak | `5242880` | Batas file yang dibaca, default 5 MiB. |
@@ -181,6 +182,10 @@ Menu `/start` sekarang menampilkan nama lengkap Telegram dengan fallback yang ra
 Bot dapat membaca file privat berformat TXT, MD, CSV, JSON, LOG, dan PDF. Ukuran file dibatasi 5 MB dan hasil ekstraksi dibatasi 20.000 karakter sebelum dikirim ke model. Isi file diperlakukan sebagai data untuk dianalisis, bukan sebagai instruksi sistem. File sementara dihapus setelah diproses.
 
 Halaman Balance memisahkan `Provider Balance` dari `Local Estimasi`. Dokumentasi Top Tools AI menyediakan endpoint chat/image dan batas penggunaan, tetapi tidak mendokumentasikan endpoint publik khusus untuk saldo akun. Karena itu bot tidak akan mengklaim tracker SQLite sebagai saldo provider. Tombol `Refresh Balance` tetap mencoba endpoint yang tersedia; jika tidak ada respons resmi, gunakan dashboard Top Tools untuk saldo aktual.
+
+Chat teks sekarang meminta mode SSE streaming. Hanna mengedit pesan Telegram secara berkala, bukan untuk setiap token, agar respons mulai terlihat lebih cepat tanpa memicu FloodWait. Jika provider tidak mendukung streaming atau gagal sebelum token pertama, bot otomatis memakai mode non-streaming. Jika stream terputus setelah sebagian teks diterima, bot tidak mengulang request secara otomatis agar tidak berisiko menggandakan biaya.
+
+Setiap request chat juga menerima timestamp server terbaru dalam zona `Asia/Jakarta (WIB)`. Pertanyaan tentang jam, tanggal, dan hari dapat dijawab berdasarkan timestamp tersebut. Ini bukan akses internet umum: pertanyaan real-time seperti berita, cuaca, harga, atau event tetap membutuhkan sumber data/tool khusus dan tidak boleh dianggap live hanya karena fitur streaming aktif.
 
 ## Audit yang sudah dilakukan
 
