@@ -8,6 +8,11 @@ load_dotenv()
 # ─── CORE BOT CONFIG ───────────────────────────────────────────────
 BOT_TOKEN   = os.getenv("BOT_TOKEN", "").strip()
 API_HASH    = os.getenv("API_HASH", "").strip()
+PROXY_SCHEME = os.getenv("PROXY_SCHEME", "socks5").strip().lower()
+PROXY_HOST = os.getenv("PROXY_HOST", "").strip()
+PROXY_PORT = int(os.getenv("PROXY_PORT", "1080"))
+PROXY_USERNAME = os.getenv("PROXY_USERNAME", "").strip()
+PROXY_PASSWORD = os.getenv("PROXY_PASSWORD", "")
 
 def _required_int(name: str) -> int:
     raw = os.getenv(name, "").strip()
@@ -24,6 +29,10 @@ if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN is required")
 if not API_HASH:
     raise ValueError("API_HASH is required")
+if PROXY_SCHEME not in {"socks4", "socks5", "http"}:
+    raise ValueError("PROXY_SCHEME must be socks4, socks5, or http")
+if not 1 <= PROXY_PORT <= 65535:
+    raise ValueError("PROXY_PORT must be between 1 and 65535")
 
 # Multiple bots: BOT_TOKEN_2, BOT_TOKEN_3, dst (opsional)
 EXTRA_TOKENS = [

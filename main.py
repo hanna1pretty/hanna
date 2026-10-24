@@ -2,7 +2,10 @@ import os
 import asyncio
 import logging
 from pyrogram import Client
-from config import BOT_TOKEN, API_ID, API_HASH, EXTRA_TOKENS
+from config import (
+    BOT_TOKEN, API_ID, API_HASH, EXTRA_TOKENS,
+    PROXY_SCHEME, PROXY_HOST, PROXY_PORT, PROXY_USERNAME, PROXY_PASSWORD,
+)
 from utils.helpers import init_db
 from utils.logger import setup_logging
 from handlers import start, api_manager, image, vision, chat, files
@@ -11,12 +14,24 @@ logger = logging.getLogger(__name__)
 
 def make_client(token: str, bot_name: str, session_suffix: str = "") -> Client:
     """Buat satu instance Pyrogram Client."""
+    proxy = None
+    if PROXY_HOST:
+        proxy = {
+            "scheme": PROXY_SCHEME,
+            "hostname": PROXY_HOST,
+            "port": PROXY_PORT,
+        }
+        if PROXY_USERNAME:
+            proxy["username"] = PROXY_USERNAME
+        if PROXY_PASSWORD:
+            proxy["password"] = PROXY_PASSWORD
     return Client(
         f"hanna_bot{session_suffix}",
         api_id=API_ID,
         api_hash=API_HASH,
         bot_token=token,
-        workdir="data"
+        workdir="data",
+        proxy=proxy,
     )
 
 def register_all(app: Client, bot_name: str):
