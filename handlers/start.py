@@ -1,6 +1,9 @@
 import logging
 import asyncio
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from pyrogram import filters
+from pyrogram.enums import ParseMode
 from pyrogram.errors import MessageNotModified
 import keyboards as kb
 from config import ADMIN_IDS
@@ -13,10 +16,11 @@ from utils.helpers import (
 from utils.ai import check_live_api_balance
 
 logger = logging.getLogger(__name__)
+WIB = ZoneInfo("Asia/Jakarta")
 
-async def safe_edit(message, text, reply_markup=None):
+async def safe_edit(message, text, reply_markup=None, parse_mode=None):
     try:
-        await message.edit_text(text, reply_markup=reply_markup)
+        await message.edit_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
     except MessageNotModified:
         pass
     except Exception as e:
@@ -54,20 +58,20 @@ async def build_limits_text(uid: int, bot_name: str = "default") -> str:
     )
     api = get_active_api()
     return (
-        "HANNA AI — BALANCE & LIMITS\n\n"
-        f"Provider          : {api['provider'].upper()}\n"
-        f"Active Model      : {active}\n"
+        "<b>HANNA AI — BALANCE &amp; LIMITS</b>\n\n"
+        f"Provider          : <b>{api['provider'].upper()}</b>\n"
+        f"Active Model      : <code>{active}</code>\n"
         "━━━━━━━━━━━━━━━━━━━\n"
-        f"Live Balance      : {live_balance}\n"
-        f"Initial Credits   : ${cred['initial']:.2f}\n"
-        f"Estimated Used    : ${cred['spent']:.4f}\n"
-        f"Remaining Credits : ${cred['remaining']:.4f}\n"
+        f"Provider Balance  : {live_balance}\n"
+        f"Local Estimasi    : ${cred['remaining']:.4f} / ${cred['initial']:.2f}\n"
+        f"Local Terpakai    : ${cred['spent']:.4f}\n"
         "━━━━━━━━━━━━━━━━━━━\n"
         f"Total Requests    : {cred['requests']}x\n"
         f"Input Tokens      : {cred['input_tokens']:,}\n"
         f"Output Tokens     : {cred['output_tokens']:,}\n"
         f"Total Tokens      : {cred['total_tokens']:,}\n\n"
-        "Tip: /setbalance 220 untuk kalibrasi ulang saldo."
+        f"<code>Diperiksa: {datetime.now(WIB).strftime('%d-%m-%Y %H:%M:%S WIB')}</code>\n"
+        "Catatan: Local Estimasi bukan saldo akun provider."
     )
 
 def register(app, bot_name: str = "default"):
@@ -78,7 +82,11 @@ def register(app, bot_name: str = "default"):
             return await m.reply_text(
                 f"Access Denied. Bot dalam mode ADMIN ONLY.\nYour ID: {m.from_user.id}"
             )
-        await m.reply_text(kb.welcome_text(m.from_user, bot_name), reply_markup=kb.start_keyboard())
+        await m.reply_text(
+            kb.welcome_text(m.from_user, bot_name),
+            reply_markup=kb.start_keyboard(),
+            parse_mode=ParseMode.HTML,
+        )
 
     @app.on_message(filters.command("myid"))
     async def myid_cmd(c, m):
@@ -107,14 +115,14 @@ def register(app, bot_name: str = "default"):
         if d == "open_commands":
             await q.answer()
             await safe_edit(q.message,
-                "HANNA AI — COMMANDS\n\nSmooth experience with our service\nCheckout our commands below:",
-                reply_markup=kb.commands_keyboard())
+                "<b>HANNA AI — MENU</b>\n\nPilih fitur yang ingin digunakan:",
+                reply_markup=kb.commands_keyboard(), parse_mode=ParseMode.HTML)
 
         elif d == "open_models":
             await q.answer()
             await safe_edit(q.message,
-                "Choose Model Category\n\nYour API key works with every model you have access to.",
-                reply_markup=kb.category_keyboard())
+                "<b>PILIH KATEGORI MODEL</b>\n\nPilih model yang ingin digunakan:",
+                reply_markup=kb.category_keyboard(), parse_mode=ParseMode.HTML)
 
         elif d == "open_api":
             if not is_admin(uid):
@@ -159,7 +167,10 @@ def register(app, bot_name: str = "default"):
 
         elif d == "back_start":
             await q.answer()
-            await safe_edit(q.message, kb.welcome_text(q.from_user, bot_name), reply_markup=kb.start_keyboard())
+            await safe_edit(
+                q.message, kb.welcome_text(q.from_user, bot_name),
+                reply_markup=kb.start_keyboard(), parse_mode=ParseMode.HTML
+            )
 
         elif d == "cmd_clear":
             await clear_history(uid, bot_name)
@@ -187,27 +198,29 @@ def register(app, bot_name: str = "default"):
                 "Recommended model: DeepSeek-V4-Flash-Vision-Exp",
                 reply_markup=kb.back_commands_keyboard())
 
+        elif d == "cmd_file":
+            await q.answer()
+            await safe_edit(q.message,
+                "<b>BACA FILE</b>\n\nKirim file TXT, MD, CSV, JSON, LOG, atau PDF di chat privat ini.\n"
+                "Ukuran maksimum 5 MB.", reply_markup=kb.back_commands_keyboard(),
+                parse_mode=ParseMode.HTML)
+
         elif d in ("cmd_limits", "refresh_limits"):
             await q.answer("Checking balance...")
             text = await build_limits_text(uid, bot_name)
-            await safe_edit(q.message, text, reply_markup=kb.limits_keyboard())
+            await safe_edit(q.message, text, reply_markup=kb.limits_keyboard(), parse_mode=ParseMode.HTML)
 
         elif d == "cmd_help":
             await q.answer()
             await safe_edit(q.message,
-                "HELP & COMMANDS\n\n"
-                "/start              — Main menu\n"
-                "/myid               — Cek Telegram ID kamu\n"
-                "/balance            — Cek saldo kredit API\n"
-                "/setbalance <usd>   — Set patokan saldo\n"
-                "/api                — Manage API & Provider\n"
-                "/setkey <key>       — Ganti API Key\n"
-                "/seturl <url>       — Ganti Base URL\n"
-                "/setprovider <n> <url> <key>\n"
-                "/addmodel <id>|<cat>|<name>|<in>|<out>\n"
-                "/delmodel <id>      — Hapus model\n"
-                "/img <prompt>       — Generate image\n"
-                "/clear              — Reset chat history",
-                reply_markup=kb.back_commands_keyboard())
+                "<b>BANTUAN &amp; PERINTAH</b>\n\n"
+                "/start — Menu utama\n"
+                "/myid — Lihat Telegram ID\n"
+                "/balance — Cek balance provider\n"
+                "/api — Pengaturan API (admin)\n"
+                "/img &lt;prompt&gt; — Buat gambar\n"
+                "/clear — Hapus riwayat chat\n\n"
+                "Untuk membaca file, kirim TXT, CSV, JSON, LOG, atau PDF secara langsung.",
+                reply_markup=kb.back_commands_keyboard(), parse_mode=ParseMode.HTML)
         else:
             await q.continue_propagation()

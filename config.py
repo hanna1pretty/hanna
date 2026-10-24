@@ -54,18 +54,20 @@ DEFAULT_MODEL   = "top-tools-ai"
 MAX_HISTORY = int(os.getenv("MAX_HISTORY", "20"))
 
 # Retry config
-API_TIMEOUT  = int(os.getenv("API_TIMEOUT", "120"))
-API_RETRIES  = int(os.getenv("API_RETRIES", "3"))
+API_TIMEOUT  = int(os.getenv("API_TIMEOUT", "60"))
+API_RETRIES  = int(os.getenv("API_RETRIES", "2"))
 RETRY_DELAY  = float(os.getenv("RETRY_DELAY", "2.0"))
 MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", "10485760"))
 MAX_PROMPT_LENGTH = int(os.getenv("MAX_PROMPT_LENGTH", "4000"))
+MAX_FILE_BYTES = int(os.getenv("MAX_FILE_BYTES", "5242880"))
+MAX_EXTRACTED_CHARS = int(os.getenv("MAX_EXTRACTED_CHARS", "20000"))
 
 if not math.isfinite(INITIAL_CREDITS) or INITIAL_CREDITS < 0:
     raise ValueError("INITIAL_CREDITS must be a finite non-negative number")
 if MAX_HISTORY <= 0 or API_TIMEOUT <= 0 or API_RETRIES <= 0 or RETRY_DELAY < 0:
     raise ValueError("MAX_HISTORY, API_TIMEOUT, API_RETRIES must be positive and RETRY_DELAY non-negative")
-if MAX_IMAGE_BYTES <= 0 or MAX_PROMPT_LENGTH <= 0:
-    raise ValueError("MAX_IMAGE_BYTES and MAX_PROMPT_LENGTH must be positive")
+if MAX_IMAGE_BYTES <= 0 or MAX_PROMPT_LENGTH <= 0 or MAX_FILE_BYTES <= 0 or MAX_EXTRACTED_CHARS <= 0:
+    raise ValueError("MAX_IMAGE_BYTES, MAX_PROMPT_LENGTH, MAX_FILE_BYTES and MAX_EXTRACTED_CHARS must be positive")
 
 # ─── SYSTEM PROMPT ─────────────────────────────────────────────────
 SYSTEM_PROMPT = os.getenv(

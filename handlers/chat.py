@@ -24,13 +24,13 @@ def register(app, bot_name: str = "default"):
 
         user_text = m.text
 
-        # Semua operasi ini async & concurrent per user
+        # Kirim acknowledgement sedini mungkin agar user tidak menunggu tanpa feedback.
+        wait_msg = await m.reply_text("⏳ Memproses pesan...")
+
         model, history = await asyncio.gather(
             get_model_async(uid, bot_name),
             get_history(uid, bot_name)
         )
-
-        wait_msg = await m.reply_text("...")
 
         # Tambah history user sebelum kirim ke API
         await add_history(uid, "user", user_text, bot_name)

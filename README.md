@@ -61,11 +61,13 @@ Variabel penting lainnya:
 | `BASE_URL` | Tidak | `https://top-tools-ai.com/api/v1` | Base URL OpenAI-compatible provider awal. |
 | `INITIAL_CREDITS` | Tidak | `220.00` | Saldo acuan untuk credit tracker lokal. |
 | `MAX_HISTORY` | Tidak | `20` | Jumlah pesan history per user dan bot. |
-| `API_TIMEOUT` | Tidak | `120` | Timeout request provider dalam detik. |
-| `API_RETRIES` | Tidak | `3` | Jumlah percobaan request. |
+| `API_TIMEOUT` | Tidak | `60` | Timeout request provider dalam detik. |
+| `API_RETRIES` | Tidak | `2` | Jumlah percobaan request. |
 | `RETRY_DELAY` | Tidak | `2.0` | Jeda retry dalam detik. |
 | `MAX_IMAGE_BYTES` | Tidak | `10485760` | Batas foto vision, default 10 MiB. |
 | `MAX_PROMPT_LENGTH` | Tidak | `4000` | Batas caption/prompt vision. |
+| `MAX_FILE_BYTES` | Tidak | `5242880` | Batas file yang dibaca, default 5 MiB. |
+| `MAX_EXTRACTED_CHARS` | Tidak | `20000` | Batas teks file yang dikirim ke AI. |
 | `BOT_TOKEN_2` | Tidak | kosong | Bot tambahan kedua, jika diperlukan. |
 
 Bot akan **gagal start dengan sengaja** jika `BOT_TOKEN`, `API_ID`, `API_HASH`, atau `ADMIN_ID` belum valid. Ini mencegah konfigurasi kosong membuat akses admin terbuka kepada semua orang.
@@ -172,6 +174,14 @@ Periksa token BotFather, status container, waktu sistem VPS, koneksi outbound HT
 
 Pada start, aplikasi mendeteksi schema users lama dan memigrasikannya ke primary key gabungan `(user_id, bot_name)` untuk dukungan multi-bot. Tetap backup `data/hanna.db` sebelum update. Jika migrasi gagal, hentikan container dan pulihkan backup.
 
+## Update UX dan kemampuan AI
+
+Menu `/start` sekarang menampilkan nama lengkap Telegram dengan fallback yang rapi, sapaan berdasarkan waktu Asia/Jakarta (WIB), waktu dalam format monospace, serta quote harian. Teks lama yang tidak relevan dan angka saldo lokal dari halaman sambutan sudah dihapus. Tombol inline juga diringkas dan diterjemahkan agar fitur Chat AI, Pilih Model, Baca File, Vision, Balance, Bantuan, dan Pengaturan API lebih mudah ditemukan.
+
+Bot dapat membaca file privat berformat TXT, MD, CSV, JSON, LOG, dan PDF. Ukuran file dibatasi 5 MB dan hasil ekstraksi dibatasi 20.000 karakter sebelum dikirim ke model. Isi file diperlakukan sebagai data untuk dianalisis, bukan sebagai instruksi sistem. File sementara dihapus setelah diproses.
+
+Halaman Balance memisahkan `Provider Balance` dari `Local Estimasi`. Dokumentasi Top Tools AI menyediakan endpoint chat/image dan batas penggunaan, tetapi tidak mendokumentasikan endpoint publik khusus untuk saldo akun. Karena itu bot tidak akan mengklaim tracker SQLite sebagai saldo provider. Tombol `Refresh Balance` tetap mencoba endpoint yang tersedia; jika tidak ada respons resmi, gunakan dashboard Top Tools untuk saldo aktual.
+
 ## Audit yang sudah dilakukan
 
 - Validasi sintaks seluruh modul Python.
@@ -184,6 +194,8 @@ Pada start, aplikasi mendeteksi schema users lama dan memigrasikannya ke primary
 - Pengurangan kebocoran error provider ke pengguna.
 - Validasi model callback sebelum disimpan.
 - Cleanup client Telegram saat startup/shutdown tidak sempurna.
+- Pengujian handler baca file dengan allowlist format dan batas ukuran.
+- Penyelarasan menu, sambutan WIB, format HTML, dan callback inline.
 
 ## Lisensi
 

@@ -157,10 +157,12 @@ async def check_live_api_balance() -> str:
         return "API Key belum diatur"
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    timeout = aiohttp.ClientTimeout(total=15)
+    timeout = aiohttp.ClientTimeout(total=4)
 
     async with aiohttp.ClientSession(timeout=timeout) as session:
-        for url in [f"{base_url}/credits", f"{root_url}/credits", f"{base_url}/user/credits"]:
+        # Top Tools documents the chat/image endpoints but not a public balance endpoint.
+        # Keep only the least-invasive compatibility probes and fail fast when unavailable.
+        for url in [f"{base_url}/credits", f"{root_url}/credits"]:
             try:
                 async with session.get(url, headers=headers) as r:
                     if r.status == 200:
@@ -185,17 +187,4 @@ async def check_live_api_balance() -> str:
         except Exception:
             pass
 
-        for url in [f"{root_url}/user/balance", f"{base_url}/user/balance"]:
-            try:
-                async with session.get(url, headers=headers) as r:
-                    if r.status == 200:
-                        data = await r.json()
-                        if "balance_infos" in data and data["balance_infos"]:
-                            info = data["balance_infos"][0]
-                            return f"{info.get('total_balance')} {info.get('currency','USD')}"
-                        if "balance" in data:
-                            return f"${float(data['balance']):.4f}"
-            except Exception:
-                pass
-
-    return "Protected by Gateway — using SQLite Credit Tracker"
+    return "Tidak tersedia dari API provider (gunakan dashboard TopTools)"

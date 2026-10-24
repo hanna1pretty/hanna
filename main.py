@@ -5,7 +5,7 @@ from pyrogram import Client
 from config import BOT_TOKEN, API_ID, API_HASH, EXTRA_TOKENS
 from utils.helpers import init_db
 from utils.logger import setup_logging
-from handlers import start, api_manager, image, vision, chat
+from handlers import start, api_manager, image, vision, chat, files
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ def register_all(app: Client, bot_name: str):
     api_manager.register(app, bot_name)
     image.register(app, bot_name)
     vision.register(app, bot_name)
+    files.register(app, bot_name)
     chat.register(app, bot_name)
 
 async def run_bot(app: Client):
