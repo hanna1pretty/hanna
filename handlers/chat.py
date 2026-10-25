@@ -64,9 +64,7 @@ class TelegramStreamEditor:
 async def _animate_placeholder(message, stop_event: asyncio.Event):
     spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
     frames = [
-        f"<b>{glyph} HANNA AI // PROCESSING</b>\n"
-        "<code>NEURAL PIPELINE ACTIVE</code>\n\n"
-        "<i>Generating response...</i>"
+        f"<b>{glyph} HANNA AI // PROCESSING</b>"
         for glyph in spinner
     ]
     index = 0
@@ -121,8 +119,7 @@ def register(app, bot_name: str = "default"):
 
         user_text = (m.text or "").strip()
         wait_msg = await m.reply_text(
-            "<b>⠋ HANNA AI // INITIALIZING</b>\n"
-            "<code>NEURAL PIPELINE ACTIVE</code>",
+            "<b>⠋ HANNA AI // PROCESSING</b>",
             parse_mode=ParseMode.HTML,
         )
         stop_animation = asyncio.Event()
