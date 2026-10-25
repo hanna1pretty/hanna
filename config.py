@@ -73,6 +73,11 @@ MAX_EXTRACTED_CHARS = int(os.getenv("MAX_EXTRACTED_CHARS", "20000"))
 STREAM_UPDATE_INTERVAL = float(os.getenv("STREAM_UPDATE_INTERVAL", "0.8"))
 PUBLIC_DAILY_REQUEST_LIMIT = int(os.getenv("PUBLIC_DAILY_REQUEST_LIMIT", "40"))
 PUBLIC_DAILY_TOKEN_LIMIT = int(os.getenv("PUBLIC_DAILY_TOKEN_LIMIT", "100000"))
+PREMIUM_PACKAGES = (
+    ("Paket 7 Hari", "Rp5.000", 7),
+    ("Paket 30 Hari", "Rp15.000", 30),
+    ("Paket 90 Hari", "Rp35.000", 90),
+)
 
 if not math.isfinite(INITIAL_CREDITS) or INITIAL_CREDITS < 0:
     raise ValueError("INITIAL_CREDITS must be a finite non-negative number")

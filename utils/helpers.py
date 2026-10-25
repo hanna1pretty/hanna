@@ -77,6 +77,13 @@ def _init_db_sync():
                 cost_usd          REAL    DEFAULT 0.0,
                 created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS premium_users (
+                user_id    INTEGER NOT NULL,
+                bot_name   TEXT NOT NULL DEFAULT 'default',
+                expires_at TEXT NOT NULL,
+                granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, bot_name)
+            );
             CREATE INDEX IF NOT EXISTS idx_history_user ON chat_history(user_id, bot_name);
             CREATE INDEX IF NOT EXISTS idx_usage_user   ON usage_logs(user_id);
         """)
@@ -166,9 +173,9 @@ async def can_use_bot_async(user_id: int) -> bool:
 def can_use_bot(user_id: int) -> bool:  # sync fallback
     return is_admin(user_id) or not _get_private_mode_sync()
 
-async def check_public_limit(user_id: int) -> tuple[bool, str]:
+async def check_public_limit(user_id: int, bot_name: str = "default") -> tuple[bool, str]:
     """Check the daily public quota; administrators are never limited here."""
-    if is_admin(user_id):
+    if is_admin(user_id) or await is_premium_user(user_id, bot_name):
         return True, ""
     if await is_private_mode_async():
         return False, "Bot sedang dalam mode admin saja."
@@ -204,6 +211,37 @@ async def check_public_limit(user_id: int) -> tuple[bool, str]:
                 )
             return True, ""
     return await _run_db(_check)
+
+async def is_premium_user(user_id: int, bot_name: str = "default") -> bool:
+    def _check():
+        with _get_conn() as conn:
+            row = conn.execute(
+                """SELECT 1 FROM premium_users
+                   WHERE user_id=? AND bot_name=? AND expires_at > datetime('now')""",
+                (user_id, bot_name),
+            ).fetchone()
+            return row is not None
+    return await _run_db(_check)
+
+async def grant_premium(user_id: int, days: int, bot_name: str = "default"):
+    if days <= 0 or days > 3650:
+        raise ValueError("days must be between 1 and 3650")
+
+    def _grant():
+        with _get_conn() as conn:
+            conn.execute(
+                """INSERT INTO premium_users (user_id, bot_name, expires_at)
+                   VALUES (?, ?, datetime('now', ?))
+                   ON CONFLICT(user_id, bot_name) DO UPDATE SET
+                     expires_at = datetime(
+                         CASE WHEN premium_users.expires_at > datetime('now')
+                              THEN premium_users.expires_at ELSE datetime('now') END,
+                         ?
+                     )""",
+                (user_id, bot_name, f"+{days} days", f"+{days} days"),
+            )
+            conn.commit()
+    await _run_db(_grant)
 
 def mask_key(key: str) -> str:
     if not key:

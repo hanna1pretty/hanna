@@ -1,16 +1,43 @@
 import logging
 from pyrogram import filters
+from pyrogram.enums import ParseMode
 import keyboards as kb
-from handlers.start import api_menu_text, build_limits_text
+from handlers.start import api_menu_text, build_limits_text, premium_offer_text
 from utils.helpers import (
     is_admin, set_api_key, set_base_url,
     save_provider, add_custom_model, delete_custom_model,
-    get_active_api, mask_key, set_initial_credits
+    get_active_api, grant_premium, is_premium_user, mask_key, set_initial_credits
 )
 
 logger = logging.getLogger(__name__)
 
 def register(app, bot_name: str = "default"):
+
+    @app.on_message(filters.command("premium"))
+    async def premium_cmd(c, m):
+        active = await is_premium_user(m.from_user.id, bot_name)
+        await m.reply_text(premium_offer_text(active), parse_mode=ParseMode.HTML)
+
+    @app.on_message(filters.command("grantpremium"))
+    async def grantpremium_cmd(c, m):
+        if not is_admin(m.from_user.id):
+            return await m.reply_text("Akses ditolak. Command ini hanya untuk admin.")
+        if len(m.command) < 3:
+            return await m.reply_text(
+                "Format: /grantpremium <telegram_user_id> <hari>\n"
+                "Contoh: /grantpremium 123456789 30"
+            )
+        try:
+            user_id = int(m.command[1])
+            days = int(m.command[2])
+            await grant_premium(user_id, days, bot_name)
+        except (ValueError, TypeError):
+            return await m.reply_text("User ID dan hari harus berupa angka yang valid.")
+        await m.reply_text(
+            f"Akses premium untuk <code>{user_id}</code> diaktifkan selama "
+            f"<b>{days} hari</b>.",
+            parse_mode=ParseMode.HTML,
+        )
 
     @app.on_message(filters.command(["api", "apikey"]))
     async def api_cmd(c, m):

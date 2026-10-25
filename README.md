@@ -94,6 +94,8 @@ Bot akan **gagal start dengan sengaja** jika `BOT_TOKEN`, `API_ID`, `API_HASH`, 
 
 Saldo pada menu `Saldo dan Limit` menampilkan saldo live dari endpoint provider bila provider menyediakannya. Pemakaian lokal ditampilkan terpisah dan bukan pengganti saldo provider. Saldo provider tetap tunduk pada limit, model, dan kebijakan provider; mode admin hanya melewati limit internal bot. Saat user publik mencapai limit, bot menampilkan instruksi untuk menghubungi admin terkait pembelian credit atau akses premium. Pembayaran belum otomatis dan tetap dilakukan melalui alur resmi provider/admin.
 
+Paket premium awal yang ditampilkan bot adalah Rp5.000 untuk 7 hari, Rp15.000 untuk 30 hari, dan Rp35.000 untuk 90 hari. Setelah pembayaran diverifikasi manual, admin dapat menjalankan `/grantpremium <telegram_user_id> <hari>`. Akses premium melewati limit harian internal bot, tetapi tidak menghapus limit atau saldo dari provider AI.
+
 > API key yang dimasukkan lewat `/setkey` atau `/setprovider` disimpan di SQLite pada volume `./data`. Batasi akses VPS dan backup file tersebut.
 
 ## Operasional Docker

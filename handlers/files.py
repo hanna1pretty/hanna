@@ -70,7 +70,7 @@ def register(app, bot_name: str = "default"):
         uid = m.from_user.id
         if not await can_use_bot_async(uid):
             return await m.reply_text("Akses ditolak. Bot sedang dalam mode admin saja.")
-        allowed, limit_message = await check_public_limit(uid)
+        allowed, limit_message = await check_public_limit(uid, bot_name)
         if not allowed:
             return await m.reply_text(limit_message, parse_mode=ParseMode.HTML)
 

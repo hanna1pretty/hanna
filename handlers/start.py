@@ -6,12 +6,15 @@ from pyrogram import filters
 from pyrogram.enums import ParseMode
 from pyrogram.errors import MessageNotModified
 import keyboards as kb
-from config import ADMIN_IDS, PUBLIC_DAILY_REQUEST_LIMIT, PUBLIC_DAILY_TOKEN_LIMIT
+from config import (
+    ADMIN_IDS, PREMIUM_PACKAGES, PUBLIC_DAILY_REQUEST_LIMIT,
+    PUBLIC_DAILY_TOKEN_LIMIT,
+)
 from utils.helpers import (
     set_model, get_model, clear_history,
     get_active_api, mask_key, switch_provider,
     is_admin, can_use_bot_async, is_private_mode, toggle_private_mode,
-    get_credit_summary_sync, get_credit_summary, model_exists
+    get_credit_summary_sync, get_credit_summary, is_premium_user, model_exists
 )
 from utils.ai import check_live_api_balance
 
@@ -44,17 +47,34 @@ def api_menu_text():
         "Admin tidak terkena batas internal. Saldo provider tetap mengikuti aturan provider."
     )
 
+def premium_offer_text(active: bool = False) -> str:
+    package_lines = "\n".join(
+        f"<b>{name}</b>: {price} untuk akses premium {days} hari"
+        for name, price, days in PREMIUM_PACKAGES
+    )
+    status = "Aktif" if active else "Belum aktif"
+    return (
+        "<b>AKSES PREMIUM</b>\n\n"
+        f"Status: <code>{status}</code>\n\n"
+        f"{package_lines}\n\n"
+        "Paket di atas adalah harga awal dan dapat disesuaikan owner. "
+        "Pembayaran dilakukan manual kepada admin. Setelah pembayaran diverifikasi, "
+        "admin mengaktifkan akses premium untuk akun Telegram Anda."
+    )
+
 async def build_limits_text(uid: int, bot_name: str = "default") -> str:
-    active, cred, live_balance = await asyncio.gather(
+    active, cred, live_balance, premium = await asyncio.gather(
         asyncio.to_thread(get_model, uid, bot_name),
         get_credit_summary(),
-        check_live_api_balance()
+        check_live_api_balance(),
+        is_premium_user(uid, bot_name),
     )
     api = get_active_api()
     return (
         "<b>SALDO DAN LIMIT</b>\n\n"
         f"Provider: <b>{api['provider'].upper()}</b>\n"
         f"Model: <code>{active}</code>\n\n"
+        f"Akses premium: <code>{'Aktif' if premium or is_admin(uid) else 'Tidak aktif'}</code>\n"
         f"Saldo provider (live): {live_balance}\n"
         f"Pemakaian lokal: ${cred['spent']:.4f}\n"
         f"Total permintaan: {cred['requests']}\n"
@@ -146,7 +166,7 @@ def register(app, bot_name: str = "default"):
             await q.answer()
             cat = d.split("filter_", 1)[1]
             await safe_edit(q.message, f"Kategori: {cat}\n\nPilih model yang ingin digunakan:",
-                reply_markup=kb.models_keyboard(cat))
+                reply_markup=kb.models_keyboard(cat, uid, bot_name))
 
         elif d.startswith("setmodel_"):
             mid = d.split("setmodel_", 1)[1]

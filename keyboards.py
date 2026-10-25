@@ -3,7 +3,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from utils.helpers import get_all_models, get_providers, get_active_api, is_private_mode
+from utils.helpers import get_all_models, get_model, get_providers, get_active_api, is_private_mode
 
 WIB = ZoneInfo("Asia/Jakarta")
 QUOTES = [
@@ -96,10 +96,14 @@ def category_keyboard():
     ])
 
 
-def models_keyboard(cat: str = "All"):
+def models_keyboard(cat: str = "All", user_id: int | None = None, bot_name: str = "default"):
     models = get_all_models(cat)
+    active_model = get_model(user_id, bot_name) if user_id is not None else None
     buttons = [
-        [InlineKeyboardButton(f"{m['name']} - {m['cat']}", callback_data=f"setmodel_{m['id']}")]
+        [InlineKeyboardButton(
+            f"{m['name']} - {m['cat']}" + (" (Aktif)" if m["id"] == active_model else ""),
+            callback_data=f"setmodel_{m['id']}"
+        )]
         for m in models
     ]
     buttons.append([InlineKeyboardButton("Kembali", callback_data="open_models")])

@@ -20,6 +20,7 @@ RESERVED_COMMANDS = [
     "start", "myid", "clear", "export", "img", "image", "help",
     "api", "apikey", "balance", "saldo", "limits", "setbalance",
     "setkey", "seturl", "setprovider", "addmodel", "delmodel",
+    "premium", "grantpremium",
 ]
 
 
@@ -83,7 +84,7 @@ def register(app, bot_name: str = "default"):
             return await m.reply_text(
                 f"Akses ditolak. Bot sedang dalam mode admin saja.\nID kamu: {uid}"
             )
-        allowed, limit_message = await check_public_limit(uid)
+        allowed, limit_message = await check_public_limit(uid, bot_name)
         if not allowed:
             return await m.reply_text(limit_message, parse_mode=ParseMode.HTML)
 
