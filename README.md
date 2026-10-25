@@ -96,6 +96,8 @@ Saldo pada menu `Saldo dan Limit` menampilkan saldo live dari endpoint provider 
 
 Paket premium awal yang ditampilkan bot adalah Rp5.000 untuk 7 hari, Rp15.000 untuk 30 hari, dan Rp35.000 untuk 90 hari. Setelah pembayaran diverifikasi manual, admin dapat menjalankan `/grantpremium <telegram_user_id> <hari>`. Akses premium melewati limit harian internal bot, tetapi tidak menghapus limit atau saldo dari provider AI.
 
+Menu `Percakapan` memungkinkan user membuat beberapa sesi chat yang terpisah dan berpindah di antaranya tanpa mencampur riwayat. Riwayat lama dimigrasikan ke percakapan `Percakapan lama` saat bot dijalankan setelah update. Command premium admin yang tersedia: `/grantpremium`, `/premiumusers`, dan `/revokepremium`.
+
 > API key yang dimasukkan lewat `/setkey` atau `/setprovider` disimpan di SQLite pada volume `./data`. Batasi akses VPS dan backup file tersebut.
 
 ## Operasional Docker

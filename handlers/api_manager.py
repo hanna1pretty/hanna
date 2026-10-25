@@ -6,7 +6,8 @@ from handlers.start import api_menu_text, build_limits_text, premium_offer_text
 from utils.helpers import (
     is_admin, set_api_key, set_base_url,
     save_provider, add_custom_model, delete_custom_model,
-    get_active_api, grant_premium, is_premium_user, mask_key, set_initial_credits
+    get_active_api, grant_premium, is_premium_user, list_premium_users,
+    mask_key, revoke_premium, set_initial_credits
 )
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,35 @@ def register(app, bot_name: str = "default"):
             f"Akses premium untuk <code>{user_id}</code> diaktifkan selama "
             f"<b>{days} hari</b>.",
             parse_mode=ParseMode.HTML,
+        )
+
+    @app.on_message(filters.command("premiumusers"))
+    async def premiumusers_cmd(c, m):
+        if not is_admin(m.from_user.id):
+            return await m.reply_text("Akses ditolak. Command ini hanya untuk admin.")
+        users = await list_premium_users(bot_name)
+        if not users:
+            return await m.reply_text("Belum ada user premium yang aktif.")
+        lines = ["<b>USER PREMIUM AKTIF</b>", ""]
+        lines.extend(
+            f"<code>{row['user_id']}</code> — berakhir {row['expires_at']} UTC"
+            for row in users
+        )
+        await m.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+
+    @app.on_message(filters.command("revokepremium"))
+    async def revokepremium_cmd(c, m):
+        if not is_admin(m.from_user.id):
+            return await m.reply_text("Akses ditolak. Command ini hanya untuk admin.")
+        if len(m.command) < 2:
+            return await m.reply_text("Format: /revokepremium <telegram_user_id>")
+        try:
+            user_id = int(m.command[1])
+        except ValueError:
+            return await m.reply_text("Telegram user ID harus berupa angka.")
+        removed = await revoke_premium(user_id, bot_name)
+        await m.reply_text(
+            "Akses premium dicabut." if removed else "User tersebut tidak memiliki premium aktif."
         )
 
     @app.on_message(filters.command(["api", "apikey"]))

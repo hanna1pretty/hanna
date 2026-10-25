@@ -12,6 +12,7 @@ from config import (
 )
 from utils.helpers import (
     set_model, get_model, clear_history,
+    create_conversation, switch_conversation,
     get_active_api, mask_key, switch_provider,
     is_admin, can_use_bot_async, is_private_mode, toggle_private_mode,
     get_credit_summary_sync, get_credit_summary, is_premium_user, model_exists
@@ -137,6 +138,40 @@ def register(app, bot_name: str = "default"):
                 "<b>PILIH MODEL</b>\n\nPilih kategori model yang ingin digunakan:",
                 reply_markup=kb.category_keyboard(), parse_mode=ParseMode.HTML)
 
+        elif d == "open_conversations":
+            await q.answer()
+            await safe_edit(
+                q.message,
+                "<b>PERCAKAPAN</b>\n\nPilih percakapan atau buat percakapan baru.",
+                reply_markup=await kb.conversations_keyboard(uid, bot_name),
+                parse_mode=ParseMode.HTML,
+            )
+
+        elif d == "new_conversation":
+            await create_conversation(uid, "Percakapan baru", bot_name)
+            await q.answer("Percakapan baru dibuat.", show_alert=True)
+            await safe_edit(
+                q.message,
+                "<b>PERCAKAPAN BARU</b>\n\nPercakapan aktif sudah diganti. Kirim pesan untuk mulai.",
+                reply_markup=await kb.conversations_keyboard(uid, bot_name),
+                parse_mode=ParseMode.HTML,
+            )
+
+        elif d.startswith("switchconv_"):
+            try:
+                conversation_id = int(d.split("switchconv_", 1)[1])
+            except ValueError:
+                return await q.answer("Percakapan tidak valid.", show_alert=True)
+            if not await switch_conversation(uid, conversation_id, bot_name):
+                return await q.answer("Percakapan tidak ditemukan.", show_alert=True)
+            await q.answer("Percakapan aktif diganti.", show_alert=True)
+            await safe_edit(
+                q.message,
+                "<b>PERCAKAPAN AKTIF</b>\n\nKirim pesan untuk melanjutkan percakapan ini.",
+                reply_markup=await kb.conversations_keyboard(uid, bot_name),
+                parse_mode=ParseMode.HTML,
+            )
+
         elif d == "open_api":
             if not is_admin(uid):
                 return await q.answer("Akses ditolak. Menu ini hanya untuk admin.", show_alert=True)
@@ -188,6 +223,15 @@ def register(app, bot_name: str = "default"):
         elif d == "cmd_clear":
             await clear_history(uid, bot_name)
             await q.answer("History cleared", show_alert=True)
+
+        elif d == "cmd_premium":
+            await q.answer()
+            await safe_edit(
+                q.message,
+                premium_offer_text(await is_premium_user(uid, bot_name)),
+                reply_markup=kb.back_commands_keyboard(),
+                parse_mode=ParseMode.HTML,
+            )
 
         elif d == "cmd_chat":
             await q.answer()

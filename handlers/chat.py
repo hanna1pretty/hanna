@@ -20,7 +20,7 @@ RESERVED_COMMANDS = [
     "start", "myid", "clear", "export", "img", "image", "help",
     "api", "apikey", "balance", "saldo", "limits", "setbalance",
     "setkey", "seturl", "setprovider", "addmodel", "delmodel",
-    "premium", "grantpremium",
+    "premium", "grantpremium", "premiumusers", "revokepremium",
 ]
 
 

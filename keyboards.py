@@ -3,7 +3,10 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from utils.helpers import get_all_models, get_model, get_providers, get_active_api, is_private_mode
+from utils.helpers import (
+    get_all_models, get_model, get_providers, get_active_api,
+    is_private_mode, list_conversations,
+)
 
 WIB = ZoneInfo("Asia/Jakarta")
 QUOTES = [
@@ -70,6 +73,8 @@ def start_keyboard():
          InlineKeyboardButton("Analisis Gambar", callback_data="cmd_vision")],
         [InlineKeyboardButton("Saldo dan Limit", callback_data="cmd_limits"),
          InlineKeyboardButton("Bantuan", callback_data="cmd_help")],
+        [InlineKeyboardButton("Percakapan", callback_data="open_conversations"),
+         InlineKeyboardButton("Premium", callback_data="cmd_premium")],
     ])
 
 
@@ -81,6 +86,8 @@ def commands_keyboard():
          InlineKeyboardButton("Baca File", callback_data="cmd_file")],
         [InlineKeyboardButton("Hapus Riwayat", callback_data="cmd_clear"),
          InlineKeyboardButton("Saldo dan Limit", callback_data="cmd_limits")],
+        [InlineKeyboardButton("Percakapan", callback_data="open_conversations"),
+         InlineKeyboardButton("Premium", callback_data="cmd_premium")],
         [InlineKeyboardButton("Pilih Model", callback_data="open_models"),
          InlineKeyboardButton("Pengaturan API", callback_data="open_api")],
         [InlineKeyboardButton("Kembali", callback_data="back_start")],
@@ -143,3 +150,19 @@ def back_commands_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("Kembali ke Menu", callback_data="open_commands")]
     ])
+
+async def conversations_keyboard(user_id: int, bot_name: str = "default"):
+    conversations = await list_conversations(user_id, bot_name)
+    buttons = []
+    for item in conversations:
+        marker = " (Aktif)" if item["active"] else ""
+        title = item["title"][:42]
+        buttons.append([
+            InlineKeyboardButton(
+                f"{title}{marker} [{item['messages']}]",
+                callback_data=f"switchconv_{item['id']}",
+            )
+        ])
+    buttons.append([InlineKeyboardButton("Percakapan Baru", callback_data="new_conversation")])
+    buttons.append([InlineKeyboardButton("Kembali", callback_data="open_commands")])
+    return InlineKeyboardMarkup(buttons)

@@ -84,9 +84,47 @@ def _init_db_sync():
                 granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (user_id, bot_name)
             );
+            CREATE TABLE IF NOT EXISTS conversations (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL,
+                bot_name   TEXT NOT NULL DEFAULT 'default',
+                title      TEXT NOT NULL DEFAULT 'Percakapan baru',
+                archived  INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS active_conversations (
+                user_id         INTEGER NOT NULL,
+                bot_name        TEXT NOT NULL DEFAULT 'default',
+                conversation_id INTEGER NOT NULL,
+                PRIMARY KEY (user_id, bot_name)
+            );
             CREATE INDEX IF NOT EXISTS idx_history_user ON chat_history(user_id, bot_name);
             CREATE INDEX IF NOT EXISTS idx_usage_user   ON usage_logs(user_id);
+            CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id, bot_name, updated_at);
         """)
+
+        history_columns = {row[1] for row in c.execute("PRAGMA table_info(chat_history)").fetchall()}
+        if "conversation_id" not in history_columns:
+            c.execute("ALTER TABLE chat_history ADD COLUMN conversation_id INTEGER")
+            legacy_pairs = c.execute(
+                "SELECT DISTINCT user_id, COALESCE(bot_name, 'default') AS bot_name FROM chat_history"
+            ).fetchall()
+            for pair in legacy_pairs:
+                c.execute(
+                    "INSERT INTO conversations (user_id, bot_name, title) VALUES (?, ?, ?)",
+                    (pair[0], pair[1], "Percakapan lama"),
+                )
+                conversation_id = c.lastrowid
+                c.execute(
+                    "INSERT OR REPLACE INTO active_conversations (user_id, bot_name, conversation_id) VALUES (?, ?, ?)",
+                    (pair[0], pair[1], conversation_id),
+                )
+                c.execute(
+                    "UPDATE chat_history SET conversation_id=? WHERE user_id=? AND COALESCE(bot_name, 'default')=? AND conversation_id IS NULL",
+                    (conversation_id, pair[0], pair[1]),
+                )
+            logger.info("Migrated legacy chat history to conversations.")
 
         # Migrate the original single-column primary key without deleting data.
         user_columns = c.execute("PRAGMA table_info(users)").fetchall()
@@ -242,6 +280,29 @@ async def grant_premium(user_id: int, days: int, bot_name: str = "default"):
             )
             conn.commit()
     await _run_db(_grant)
+
+async def revoke_premium(user_id: int, bot_name: str = "default") -> bool:
+    def _revoke():
+        with _get_conn() as conn:
+            conn.execute(
+                "DELETE FROM premium_users WHERE user_id=? AND bot_name=?",
+                (user_id, bot_name),
+            )
+            changed = conn.execute("SELECT changes()").fetchone()[0] > 0
+            conn.commit()
+            return changed
+    return await _run_db(_revoke)
+
+async def list_premium_users(bot_name: str = "default") -> list:
+    def _list():
+        with _get_conn() as conn:
+            rows = conn.execute(
+                """SELECT user_id, expires_at FROM premium_users
+                   WHERE bot_name=? AND expires_at > datetime('now')
+                   ORDER BY expires_at ASC""", (bot_name,)
+            ).fetchall()
+            return [dict(row) for row in rows]
+    return await _run_db(_list)
 
 def mask_key(key: str) -> str:
     if not key:
@@ -463,40 +524,126 @@ async def set_model(uid: int, model_id: str, bot_name: str = "default"):
             conn.commit()
     await _run_db(_set)
 
+def _ensure_conversation_sync(conn, uid: int, bot_name: str = "default") -> int:
+    row = conn.execute(
+        """SELECT conversation_id FROM active_conversations
+           WHERE user_id=? AND bot_name=?""", (uid, bot_name)
+    ).fetchone()
+    if row:
+        conversation = conn.execute(
+            "SELECT id FROM conversations WHERE id=? AND user_id=? AND bot_name=? AND archived=0",
+            (row["conversation_id"], uid, bot_name),
+        ).fetchone()
+        if conversation:
+            return int(conversation["id"])
+    conn.execute(
+        "INSERT INTO conversations (user_id, bot_name, title) VALUES (?, ?, ?)",
+        (uid, bot_name, "Percakapan baru"),
+    )
+    conversation_id = conn.lastrowid
+    conn.execute(
+        """INSERT OR REPLACE INTO active_conversations (user_id, bot_name, conversation_id)
+           VALUES (?, ?, ?)""", (uid, bot_name, conversation_id)
+    )
+    return int(conversation_id)
+
 async def get_history(uid: int, bot_name: str = "default") -> list:
     def _get():
         with _get_conn() as conn:
+            conversation_id = _ensure_conversation_sync(conn, uid, bot_name)
             rows = conn.execute(
-                """SELECT role,content FROM chat_history
-                   WHERE user_id=? AND bot_name=?
-                   ORDER BY id DESC LIMIT ?""",
-                (uid, bot_name, MAX_HISTORY)
+                """SELECT role, content FROM chat_history
+                   WHERE conversation_id=? ORDER BY id DESC LIMIT ?""",
+                (conversation_id, MAX_HISTORY),
             ).fetchall()
+            conn.commit()
             return [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
     return await _run_db(_get)
 
 async def add_history(uid: int, role: str, content: str, bot_name: str = "default"):
     def _add():
         with _get_conn() as conn:
+            conversation_id = _ensure_conversation_sync(conn, uid, bot_name)
             conn.execute(
-                "INSERT INTO chat_history (user_id,bot_name,role,content) VALUES (?,?,?,?)",
-                (uid, bot_name, role, content)
+                """INSERT INTO chat_history
+                   (user_id, bot_name, conversation_id, role, content)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (uid, bot_name, conversation_id, role, content),
             )
-            conn.execute("""
-                DELETE FROM chat_history
-                WHERE user_id=? AND bot_name=? AND id NOT IN (
-                    SELECT id FROM chat_history WHERE user_id=? AND bot_name=?
-                    ORDER BY id DESC LIMIT ?
-                )
-            """, (uid, bot_name, uid, bot_name, MAX_HISTORY))
+            conn.execute(
+                """UPDATE conversations SET updated_at=CURRENT_TIMESTAMP
+                   WHERE id=?""", (conversation_id,)
+            )
+            conn.execute(
+                """DELETE FROM chat_history
+                   WHERE conversation_id=? AND id NOT IN (
+                       SELECT id FROM chat_history WHERE conversation_id=?
+                       ORDER BY id DESC LIMIT ?
+                   )""", (conversation_id, conversation_id, MAX_HISTORY),
+            )
             conn.commit()
     await _run_db(_add)
 
 async def clear_history(uid: int, bot_name: str = "default"):
     def _clear():
         with _get_conn() as conn:
+            conversation_id = _ensure_conversation_sync(conn, uid, bot_name)
+            conn.execute("DELETE FROM chat_history WHERE conversation_id=?", (conversation_id,))
             conn.execute(
-                "DELETE FROM chat_history WHERE user_id=? AND bot_name=?", (uid, bot_name)
+                "UPDATE conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                (conversation_id,),
             )
             conn.commit()
     await _run_db(_clear)
+
+async def list_conversations(uid: int, bot_name: str = "default") -> list:
+    def _list():
+        with _get_conn() as conn:
+            active_id = _ensure_conversation_sync(conn, uid, bot_name)
+            rows = conn.execute(
+                """SELECT c.id, c.title, c.updated_at, COUNT(h.id) AS messages
+                   FROM conversations c LEFT JOIN chat_history h ON h.conversation_id=c.id
+                   WHERE c.user_id=? AND c.bot_name=? AND c.archived=0
+                   GROUP BY c.id ORDER BY c.updated_at DESC, c.id DESC LIMIT 20""",
+                (uid, bot_name),
+            ).fetchall()
+            conn.commit()
+            return [dict(row) | {"active": row["id"] == active_id} for row in rows]
+    return await _run_db(_list)
+
+async def create_conversation(uid: int, title: str = "Percakapan baru", bot_name: str = "default") -> int:
+    def _create():
+        with _get_conn() as conn:
+            clean_title = " ".join((title or "Percakapan baru").split())[:60] or "Percakapan baru"
+            conn.execute(
+                "INSERT INTO conversations (user_id, bot_name, title) VALUES (?, ?, ?)",
+                (uid, bot_name, clean_title),
+            )
+            conversation_id = int(conn.lastrowid)
+            conn.execute(
+                """INSERT OR REPLACE INTO active_conversations
+                   (user_id, bot_name, conversation_id) VALUES (?, ?, ?)""",
+                (uid, bot_name, conversation_id),
+            )
+            conn.commit()
+            return conversation_id
+    return await _run_db(_create)
+
+async def switch_conversation(uid: int, conversation_id: int, bot_name: str = "default") -> bool:
+    def _switch():
+        with _get_conn() as conn:
+            row = conn.execute(
+                """SELECT id FROM conversations
+                   WHERE id=? AND user_id=? AND bot_name=? AND archived=0""",
+                (conversation_id, uid, bot_name),
+            ).fetchone()
+            if not row:
+                return False
+            conn.execute(
+                """INSERT OR REPLACE INTO active_conversations
+                   (user_id, bot_name, conversation_id) VALUES (?, ?, ?)""",
+                (uid, bot_name, conversation_id),
+            )
+            conn.commit()
+            return True
+    return await _run_db(_switch)
