@@ -13,6 +13,16 @@ Semua command pada dokumen ini hanya dapat digunakan oleh Telegram ID yang terca
 
 `/ping` mengukur resource pada machine/container tempat bot berjalan. Angka Telegram API adalah waktu request `getMe`, bukan waktu respons AI provider.
 
+## Web research
+
+| Command | Contoh | Fungsi |
+|---|---|---|
+| `/web` | `/web berita teknologi terbaru` | Mencari web, mengambil beberapa halaman publik, lalu merangkum dengan sumber yang dapat dibuka. |
+| `/research` | `/research dokumentasi Python asyncio` | Alias web research. |
+| `/search` | `/search harga Raspberry Pi 5` | Alias web research. |
+
+User juga dapat menulis langsung `cari di internet tentang ...`, `riset ...`, atau `search ...`. Search memakai Brave Search bila `WEB_SEARCH_API_KEY` diatur. Tanpa key, bot mencoba fallback DuckDuckGo HTML yang lebih terbatas. Bot hanya mengambil URL HTTP/HTTPS publik, membatasi ukuran dan waktu, memblokir alamat private/localhost/metadata, dan memperlakukan isi halaman sebagai data tidak tepercaya agar prompt injection dari web tidak menjadi instruksi sistem.
+
 ## Premium dan user berlangganan
 
 | Command | Contoh | Fungsi |

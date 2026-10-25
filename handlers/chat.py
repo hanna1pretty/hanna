@@ -26,6 +26,7 @@ RESERVED_COMMANDS = [
     "setkey", "seturl", "setprovider", "addmodel", "delmodel",
     "premium", "grantpremium", "premiumusers", "revokepremium",
     "ping", "status", "adminhelp", "admin_help",
+    "web", "research", "search",
 ]
 
 

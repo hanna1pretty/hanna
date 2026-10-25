@@ -16,7 +16,7 @@ from config import (
 )
 from utils.helpers import init_db
 from utils.logger import setup_logging
-from handlers import start, api_manager, admin_tools, image, vision, chat, files
+from handlers import start, api_manager, admin_tools, image, vision, chat, files, web
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ def register_all(app: Client, bot_name: str):
     image.register(app, bot_name)
     vision.register(app, bot_name)
     files.register(app, bot_name)
+    web.register(app, bot_name)
     chat.register(app, bot_name)
 
 async def run_bot(app: Client):

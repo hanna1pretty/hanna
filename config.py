@@ -73,6 +73,13 @@ MAX_EXTRACTED_CHARS = int(os.getenv("MAX_EXTRACTED_CHARS", "20000"))
 STREAM_UPDATE_INTERVAL = float(os.getenv("STREAM_UPDATE_INTERVAL", "0.8"))
 PUBLIC_DAILY_REQUEST_LIMIT = int(os.getenv("PUBLIC_DAILY_REQUEST_LIMIT", "40"))
 PUBLIC_DAILY_TOKEN_LIMIT = int(os.getenv("PUBLIC_DAILY_TOKEN_LIMIT", "100000"))
+WEB_SEARCH_API_KEY = os.getenv("WEB_SEARCH_API_KEY", "").strip()
+WEB_SEARCH_ENDPOINT = os.getenv(
+    "WEB_SEARCH_ENDPOINT", "https://api.search.brave.com/res/v1/web/search"
+).strip()
+WEB_SEARCH_RESULTS = int(os.getenv("WEB_SEARCH_RESULTS", "5"))
+WEB_FETCH_TIMEOUT = int(os.getenv("WEB_FETCH_TIMEOUT", "12"))
+WEB_FETCH_MAX_BYTES = int(os.getenv("WEB_FETCH_MAX_BYTES", "350000"))
 PREMIUM_PACKAGES = (
     ("Paket 7 Hari", "Rp5.000", 7),
     ("Paket 30 Hari", "Rp15.000", 30),
@@ -88,6 +95,8 @@ if (MAX_IMAGE_BYTES <= 0 or MAX_PROMPT_LENGTH <= 0 or MAX_FILE_BYTES <= 0
     raise ValueError("File/image/prompt limits and STREAM_UPDATE_INTERVAL must be positive")
 if PUBLIC_DAILY_REQUEST_LIMIT <= 0 or PUBLIC_DAILY_TOKEN_LIMIT <= 0:
     raise ValueError("Public daily request and token limits must be positive")
+if not 1 <= WEB_SEARCH_RESULTS <= 10 or WEB_FETCH_TIMEOUT <= 0 or WEB_FETCH_MAX_BYTES <= 0:
+    raise ValueError("Web research limits are invalid")
 
 # ─── SYSTEM PROMPT ─────────────────────────────────────────────────
 SYSTEM_PROMPT = os.getenv(

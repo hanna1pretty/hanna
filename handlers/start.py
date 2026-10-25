@@ -277,6 +277,19 @@ def register(app, bot_name: str = "default"):
                 reply_markup=kb.back_commands_keyboard(),
                 parse_mode=ParseMode.HTML)
 
+        elif d == "cmd_web":
+            await q.answer()
+            await safe_edit(
+                q.message,
+                "<b>WEB RESEARCH</b>\n\n"
+                "Cari informasi terbaru dari internet dengan sumber yang dapat dibuka.\n\n"
+                "Contoh:\n"
+                "<code>/web berita teknologi terbaru</code>\n"
+                "<code>/web harga dan spesifikasi Raspberry Pi 5</code>\n\n"
+                "Atau tulis langsung: <i>cari di internet tentang...</i>",
+                reply_markup=kb.back_commands_keyboard(), parse_mode=ParseMode.HTML,
+            )
+
         elif d in ("cmd_limits", "refresh_limits"):
             await q.answer("Memperbarui saldo...")
             text = await build_limits_text(uid, bot_name)
