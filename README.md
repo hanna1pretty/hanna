@@ -202,6 +202,8 @@ Chat teks sekarang meminta mode SSE streaming. Hanna mengedit pesan Telegram sec
 
 Jawaban AI dirender dari Markdown umum ke HTML Telegram. Fenced code seperti ` ```python ` sekarang menjadi blok kode monospaced yang dapat disalin, bukan teks literal tiga backtick. Renderer juga mendukung heading, bold, italic, inline code, quote, dan daftar secara aman. Saat AI masih memproses, placeholder `Hanna sedang menulis` dianimasikan dengan titik berjalan. Telegram Bot API mendukung entity dasar tersebut, tetapi Rich Messages/Editor penuh seperti tabel native, formula, media inline, dan blok rich khusus belum diekspos oleh Pyrogram yang dipakai aplikasi ini; tabel dari AI tetap dirender sebagai teks agar kompatibel lintas client.
 
+Loading chat kini memakai animasi progress bar bergaya terminal: `HANNA AI // PROCESSING`, bar `█`/`░`, persentase bergerak, dan status neural pipeline. Menu inline juga menggunakan label uppercase yang konsisten, seperti `CHAT AI`, `PILIH MODEL`, `PERCAKAPAN`, dan `PREMIUM`. Command `/ping` menampilkan kartu `SERVER MONITOR` dengan health status Telegram API dan SQLite, bar CPU/memory/disk, uptime, ukuran database, provider, mode akses, serta jumlah premium aktif.
+
 Setiap request chat juga menerima timestamp server terbaru dalam zona `Asia/Jakarta (WIB)`. Pertanyaan tentang jam, tanggal, dan hari dapat dijawab berdasarkan timestamp tersebut. Ini bukan akses internet umum: pertanyaan real-time seperti berita, cuaca, harga, atau event tetap membutuhkan sumber data/tool khusus dan tidak boleh dianggap live hanya karena fitur streaming aktif.
 
 ## Audit yang sudah dilakukan

@@ -97,6 +97,17 @@ def _format_uptime(seconds: float) -> str:
     return f"{days}h {hours:02d}j {minutes:02d}m {seconds:02d}d"
 
 
+def _bar(percent: float | None, width: int = 10) -> str:
+    if percent is None:
+        return "░" * width
+    filled = max(0, min(width, round(percent / 100 * width)))
+    return "█" * filled + "░" * (width - filled)
+
+
+def _health(percent: float | None, limit: float) -> str:
+    return "NOMINAL" if percent is None or percent < limit else "TINGGI"
+
+
 def admin_help_text() -> str:
     return (
         "<b>PERINTAH ADMIN HANNA AI</b>\n\n"
@@ -150,19 +161,28 @@ def register(app, bot_name: str = "default"):
                 f"({snapshot['mem_percent']:.1f}%)"
                 if snapshot["mem_percent"] is not None else "n/a"
             )
+            cpu_value = snapshot["cpu"]
+            mem_value = snapshot["mem_percent"]
+            disk_value = snapshot["disk_percent"]
+            telegram_health = "NOMINAL" if telegram_ms < 800 else "LAMBAT"
+            database_health = "NOMINAL" if db_result[1] == "OK" and db_result[0] < 250 else "PERIKSA"
             text = (
-                "<b>STATUS HANNA AI</b>\n\n"
-                f"Telegram API: <code>{telegram_ms:.1f} ms</code>\n"
-                f"Database: <code>{db_result[1]} ({db_result[0]:.1f} ms)</code>\n"
-                f"CPU: <code>{cpu}</code>\n"
-                f"Memory: <code>{memory}</code>\n"
-                f"Disk: <code>{snapshot['disk_used']:.1f}/{snapshot['disk_total']:.1f} GB "
-                f"({snapshot['disk_percent']:.1f}%)</code>\n"
-                f"Uptime: <code>{_format_uptime(snapshot['uptime'])}</code>\n"
-                f"Database size: <code>{snapshot['db_size']:.2f} MB</code>\n\n"
-                f"Provider: <code>{api['provider']}</code>\n"
-                f"Premium aktif: <code>{len(premium_users)}</code> user\n"
-                f"Mode: <code>{'admin saja' if is_private_mode() else 'publik'}</code>"
+                "<b>HANNA AI // SERVER MONITOR</b>\n"
+                "<code>━━━━━━━━━━━━━━━━━━━━</code>\n\n"
+                f"<b>CONNECTIVITY</b>\n"
+                f"Telegram API  <code>{telegram_ms:6.1f} ms</code>  <b>{telegram_health}</b>\n"
+                f"SQLite DB     <code>{db_result[0]:6.1f} ms</code>  <b>{database_health}</b>\n\n"
+                f"<b>RESOURCES</b>\n"
+                f"CPU      <code>[{_bar(cpu_value)}] {cpu}</code>  { _health(cpu_value, 85)}\n"
+                f"Memory   <code>[{_bar(mem_value)}] {memory}</code>  { _health(mem_value, 85)}\n"
+                f"Disk     <code>[{_bar(disk_value)}] {snapshot['disk_used']:.1f}/{snapshot['disk_total']:.1f} GB</code>  { _health(disk_value, 90)}\n\n"
+                f"<b>RUNTIME</b>\n"
+                f"Uptime       <code>{_format_uptime(snapshot['uptime'])}</code>\n"
+                f"Database     <code>{snapshot['db_size']:.2f} MB</code>\n"
+                f"Provider     <code>{api['provider']}</code>\n"
+                f"Premium      <code>{len(premium_users)}</code> user aktif\n"
+                f"Access mode  <code>{'ADMIN SAJA' if is_private_mode() else 'PUBLIK'}</code>\n\n"
+                "<i>VPS telemetry snapshot • Hanna AI</i>"
             )
             await m.reply_text(text, parse_mode=ParseMode.HTML)
         except Exception:

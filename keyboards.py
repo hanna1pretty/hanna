@@ -67,39 +67,39 @@ def welcome_text(user, bot_name: str = "HANNA AI", now: datetime | None = None):
 
 def start_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("Chat AI", callback_data="cmd_chat"),
-         InlineKeyboardButton("Pilih Model", callback_data="open_models")],
-        [InlineKeyboardButton("Baca File", callback_data="cmd_file"),
-         InlineKeyboardButton("Analisis Gambar", callback_data="cmd_vision")],
-        [InlineKeyboardButton("Saldo dan Limit", callback_data="cmd_limits"),
-         InlineKeyboardButton("Bantuan", callback_data="cmd_help")],
-        [InlineKeyboardButton("Percakapan", callback_data="open_conversations"),
-         InlineKeyboardButton("Premium", callback_data="cmd_premium")],
+        [InlineKeyboardButton("CHAT AI", callback_data="cmd_chat"),
+         InlineKeyboardButton("PILIH MODEL", callback_data="open_models")],
+        [InlineKeyboardButton("BACA FILE", callback_data="cmd_file"),
+         InlineKeyboardButton("ANALISIS GAMBAR", callback_data="cmd_vision")],
+        [InlineKeyboardButton("SALDO & LIMIT", callback_data="cmd_limits"),
+         InlineKeyboardButton("BANTUAN", callback_data="cmd_help")],
+        [InlineKeyboardButton("PERCAKAPAN", callback_data="open_conversations"),
+         InlineKeyboardButton("PREMIUM", callback_data="cmd_premium")],
     ])
 
 
 def commands_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("Chat AI", callback_data="cmd_chat"),
-         InlineKeyboardButton("Buat Gambar", callback_data="cmd_image")],
-        [InlineKeyboardButton("Analisis Gambar", callback_data="cmd_vision"),
-         InlineKeyboardButton("Baca File", callback_data="cmd_file")],
-        [InlineKeyboardButton("Hapus Riwayat", callback_data="cmd_clear"),
-         InlineKeyboardButton("Saldo dan Limit", callback_data="cmd_limits")],
-        [InlineKeyboardButton("Percakapan", callback_data="open_conversations"),
-         InlineKeyboardButton("Premium", callback_data="cmd_premium")],
-        [InlineKeyboardButton("Pilih Model", callback_data="open_models"),
-         InlineKeyboardButton("Pengaturan API", callback_data="open_api")],
-        [InlineKeyboardButton("Kembali", callback_data="back_start")],
+        [InlineKeyboardButton("CHAT AI", callback_data="cmd_chat"),
+         InlineKeyboardButton("BUAT GAMBAR", callback_data="cmd_image")],
+        [InlineKeyboardButton("ANALISIS GAMBAR", callback_data="cmd_vision"),
+         InlineKeyboardButton("BACA FILE", callback_data="cmd_file")],
+        [InlineKeyboardButton("HAPUS RIWAYAT", callback_data="cmd_clear"),
+         InlineKeyboardButton("SALDO & LIMIT", callback_data="cmd_limits")],
+        [InlineKeyboardButton("PERCAKAPAN", callback_data="open_conversations"),
+         InlineKeyboardButton("PREMIUM", callback_data="cmd_premium")],
+        [InlineKeyboardButton("PILIH MODEL", callback_data="open_models"),
+         InlineKeyboardButton("PENGATURAN API", callback_data="open_api")],
+        [InlineKeyboardButton("KEMBALI", callback_data="back_start")],
     ])
 
 
 def category_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("Semua Model", callback_data="filter_All")],
-        [InlineKeyboardButton("Gratis", callback_data="filter_Free"),
-         InlineKeyboardButton("Pay as you go", callback_data="filter_Pay as you go")],
-        [InlineKeyboardButton("Kembali", callback_data="back_start")],
+        [InlineKeyboardButton("SEMUA MODEL", callback_data="filter_All")],
+        [InlineKeyboardButton("GRATIS", callback_data="filter_Free"),
+         InlineKeyboardButton("PAY AS YOU GO", callback_data="filter_Pay as you go")],
+        [InlineKeyboardButton("KEMBALI", callback_data="back_start")],
     ])
 
 
@@ -113,14 +113,14 @@ def models_keyboard(cat: str = "All", user_id: int | None = None, bot_name: str 
         )]
         for m in models
     ]
-    buttons.append([InlineKeyboardButton("Kembali", callback_data="open_models")])
+    buttons.append([InlineKeyboardButton("KEMBALI", callback_data="open_models")])
     return InlineKeyboardMarkup(buttons)
 
 
 def api_settings_keyboard():
     providers = get_providers()
     active = get_active_api()["provider"]
-    mode_label = "Mode: Admin saja" if is_private_mode() else "Mode: Publik"
+    mode_label = "MODE: ADMIN SAJA" if is_private_mode() else "MODE: PUBLIK"
     buttons, row = [], []
     for provider in providers:
         label = f"{provider['name'].upper()} (Aktif)" if provider["name"] == active else provider["name"].upper()
@@ -131,24 +131,24 @@ def api_settings_keyboard():
     if row:
         buttons.append(row)
     buttons.append([
-        InlineKeyboardButton("Perbarui Saldo", callback_data="cmd_limits"),
+        InlineKeyboardButton("PERBARUI SALDO", callback_data="cmd_limits"),
         InlineKeyboardButton(mode_label, callback_data="toggle_access"),
     ])
-    buttons.append([InlineKeyboardButton("Kembali", callback_data="back_start")])
+    buttons.append([InlineKeyboardButton("KEMBALI", callback_data="back_start")])
     return InlineKeyboardMarkup(buttons)
 
 
 def limits_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("Perbarui Saldo", callback_data="refresh_limits"),
-         InlineKeyboardButton("Pengaturan API", callback_data="open_api")],
-        [InlineKeyboardButton("Kembali", callback_data="back_start")],
+        [InlineKeyboardButton("PERBARUI SALDO", callback_data="refresh_limits"),
+         InlineKeyboardButton("PENGATURAN API", callback_data="open_api")],
+        [InlineKeyboardButton("KEMBALI", callback_data="back_start")],
     ])
 
 
 def back_commands_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("Kembali ke Menu", callback_data="open_commands")]
+        [InlineKeyboardButton("KEMBALI KE MENU", callback_data="open_commands")]
     ])
 
 async def conversations_keyboard(user_id: int, bot_name: str = "default"):
@@ -159,10 +159,10 @@ async def conversations_keyboard(user_id: int, bot_name: str = "default"):
         title = item["title"][:42]
         buttons.append([
             InlineKeyboardButton(
-                f"{title}{marker} [{item['messages']}]",
+                f"{title}{marker} • {item['messages']} MSG",
                 callback_data=f"switchconv_{item['id']}",
             )
         ])
-    buttons.append([InlineKeyboardButton("Percakapan Baru", callback_data="new_conversation")])
-    buttons.append([InlineKeyboardButton("Kembali", callback_data="open_commands")])
+    buttons.append([InlineKeyboardButton("+ PERCAKAPAN BARU", callback_data="new_conversation")])
+    buttons.append([InlineKeyboardButton("KEMBALI KE MENU", callback_data="open_commands")])
     return InlineKeyboardMarkup(buttons)

@@ -62,12 +62,17 @@ class TelegramStreamEditor:
 
 
 async def _animate_placeholder(message, stop_event: asyncio.Event):
-    frames = [
-        "<b>Hanna sedang menulis</b>",
-        "<b>Hanna sedang menulis.</b>",
-        "<b>Hanna sedang menulis..</b>",
-        "<b>Hanna sedang menulis...</b>",
-    ]
+    frames = []
+    width = 12
+    for position in range(width * 2 - 2):
+        cursor = position if position < width else (width * 2 - 2 - position)
+        bar = "".join("█" if index == cursor else "░" for index in range(width))
+        percent = round(cursor / (width - 1) * 100)
+        frames.append(
+            f"<b>HANNA AI // PROCESSING</b>\n"
+            f"<code>[{bar}] {percent:02d}%</code>\n\n"
+            "<i>Neural response pipeline active...</i>"
+        )
     index = 0
     while not stop_event.is_set():
         try:
@@ -78,7 +83,7 @@ async def _animate_placeholder(message, stop_event: asyncio.Event):
             logger.debug("Could not animate placeholder", exc_info=True)
         index += 1
         try:
-            await asyncio.wait_for(stop_event.wait(), timeout=0.55)
+            await asyncio.wait_for(stop_event.wait(), timeout=0.45)
         except asyncio.TimeoutError:
             continue
 
@@ -119,7 +124,10 @@ def register(app, bot_name: str = "default"):
             return await m.reply_text(limit_message, parse_mode=ParseMode.HTML)
 
         user_text = (m.text or "").strip()
-        wait_msg = await m.reply_text("<b>Hanna sedang menulis</b>", parse_mode=ParseMode.HTML)
+        wait_msg = await m.reply_text(
+            "<b>HANNA AI // INITIALIZING</b>\n<code>[░░░░░░░░░░░░] 00%</code>",
+            parse_mode=ParseMode.HTML,
+        )
         stop_animation = asyncio.Event()
         animation_task = asyncio.create_task(_animate_placeholder(wait_msg, stop_animation))
 
