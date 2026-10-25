@@ -71,6 +71,8 @@ MAX_PROMPT_LENGTH = int(os.getenv("MAX_PROMPT_LENGTH", "4000"))
 MAX_FILE_BYTES = int(os.getenv("MAX_FILE_BYTES", "5242880"))
 MAX_EXTRACTED_CHARS = int(os.getenv("MAX_EXTRACTED_CHARS", "20000"))
 STREAM_UPDATE_INTERVAL = float(os.getenv("STREAM_UPDATE_INTERVAL", "0.8"))
+PUBLIC_DAILY_REQUEST_LIMIT = int(os.getenv("PUBLIC_DAILY_REQUEST_LIMIT", "40"))
+PUBLIC_DAILY_TOKEN_LIMIT = int(os.getenv("PUBLIC_DAILY_TOKEN_LIMIT", "100000"))
 
 if not math.isfinite(INITIAL_CREDITS) or INITIAL_CREDITS < 0:
     raise ValueError("INITIAL_CREDITS must be a finite non-negative number")
@@ -79,6 +81,8 @@ if MAX_HISTORY <= 0 or API_TIMEOUT <= 0 or API_RETRIES <= 0 or RETRY_DELAY < 0:
 if (MAX_IMAGE_BYTES <= 0 or MAX_PROMPT_LENGTH <= 0 or MAX_FILE_BYTES <= 0
         or MAX_EXTRACTED_CHARS <= 0 or STREAM_UPDATE_INTERVAL <= 0):
     raise ValueError("File/image/prompt limits and STREAM_UPDATE_INTERVAL must be positive")
+if PUBLIC_DAILY_REQUEST_LIMIT <= 0 or PUBLIC_DAILY_TOKEN_LIMIT <= 0:
+    raise ValueError("Public daily request and token limits must be positive")
 
 # ─── SYSTEM PROMPT ─────────────────────────────────────────────────
 SYSTEM_PROMPT = os.getenv(

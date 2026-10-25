@@ -51,39 +51,39 @@ def welcome_text(user, bot_name: str = "HANNA AI", now: datetime | None = None):
         f"{MONTHS_ID[current.month - 1]} {current.year} — {current:%H:%M:%S} WIB"
     )
     return (
-        f"🌤️ <b>{time_greeting(current)}, {name}!</b>\n\n"
-        f"<code>🕒 {time_text}</code>\n"
-        "━━━━━━━━━━━━━━━━━━━\n"
-        f"👤 <b>Nama:</b> {name}\n"
-        f"🤖 <b>Asisten:</b> {html.escape(bot_name)}\n"
-        "━━━━━━━━━━━━━━━━━━━\n\n"
-        f"💬 <i>“{quote}”</i>\n\n"
+        f"<b>{time_greeting(current)}, {name}.</b>\n\n"
+        f"<code>{time_text}</code>\n"
+        "--------------------\n"
+        f"<b>Nama:</b> {name}\n"
+        f"<b>Asisten:</b> {html.escape(bot_name)}\n"
+        "--------------------\n\n"
+        f"<i>\"{quote}\"</i>\n\n"
         "Pilih menu di bawah atau kirim pesan langsung."
     )
 
 
 def start_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💬 Chat AI", callback_data="cmd_chat"),
-         InlineKeyboardButton("🧠 Pilih Model", callback_data="open_models")],
-        [InlineKeyboardButton("📄 Baca File", callback_data="cmd_file"),
-         InlineKeyboardButton("🖼️ Vision", callback_data="cmd_vision")],
-        [InlineKeyboardButton("💳 Balance", callback_data="cmd_limits"),
-         InlineKeyboardButton("❔ Bantuan", callback_data="cmd_help")],
+        [InlineKeyboardButton("Chat AI", callback_data="cmd_chat"),
+         InlineKeyboardButton("Pilih Model", callback_data="open_models")],
+        [InlineKeyboardButton("Baca File", callback_data="cmd_file"),
+         InlineKeyboardButton("Analisis Gambar", callback_data="cmd_vision")],
+        [InlineKeyboardButton("Saldo dan Limit", callback_data="cmd_limits"),
+         InlineKeyboardButton("Bantuan", callback_data="cmd_help")],
     ])
 
 
 def commands_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💬 Chat AI", callback_data="cmd_chat"),
-         InlineKeyboardButton("🎨 Buat Gambar", callback_data="cmd_image")],
-        [InlineKeyboardButton("🖼️ Vision", callback_data="cmd_vision"),
-         InlineKeyboardButton("📄 Baca File", callback_data="cmd_file")],
-        [InlineKeyboardButton("🧹 Hapus Riwayat", callback_data="cmd_clear"),
-         InlineKeyboardButton("💳 Balance", callback_data="cmd_limits")],
-        [InlineKeyboardButton("🧠 Pilih Model", callback_data="open_models"),
-         InlineKeyboardButton("⚙️ Pengaturan API", callback_data="open_api")],
-        [InlineKeyboardButton("↩️ Kembali", callback_data="back_start")],
+        [InlineKeyboardButton("Chat AI", callback_data="cmd_chat"),
+         InlineKeyboardButton("Buat Gambar", callback_data="cmd_image")],
+        [InlineKeyboardButton("Analisis Gambar", callback_data="cmd_vision"),
+         InlineKeyboardButton("Baca File", callback_data="cmd_file")],
+        [InlineKeyboardButton("Hapus Riwayat", callback_data="cmd_clear"),
+         InlineKeyboardButton("Saldo dan Limit", callback_data="cmd_limits")],
+        [InlineKeyboardButton("Pilih Model", callback_data="open_models"),
+         InlineKeyboardButton("Pengaturan API", callback_data="open_api")],
+        [InlineKeyboardButton("Kembali", callback_data="back_start")],
     ])
 
 
@@ -92,27 +92,27 @@ def category_keyboard():
         [InlineKeyboardButton("Semua Model", callback_data="filter_All")],
         [InlineKeyboardButton("Gratis", callback_data="filter_Free"),
          InlineKeyboardButton("Pay as you go", callback_data="filter_Pay as you go")],
-        [InlineKeyboardButton("↩️ Kembali", callback_data="back_start")],
+        [InlineKeyboardButton("Kembali", callback_data="back_start")],
     ])
 
 
 def models_keyboard(cat: str = "All"):
     models = get_all_models(cat)
     buttons = [
-        [InlineKeyboardButton(f"{m['name']} · {m['cat']}", callback_data=f"setmodel_{m['id']}")]
+        [InlineKeyboardButton(f"{m['name']} - {m['cat']}", callback_data=f"setmodel_{m['id']}")]
         for m in models
     ]
-    buttons.append([InlineKeyboardButton("↩️ Kembali", callback_data="open_models")])
+    buttons.append([InlineKeyboardButton("Kembali", callback_data="open_models")])
     return InlineKeyboardMarkup(buttons)
 
 
 def api_settings_keyboard():
     providers = get_providers()
     active = get_active_api()["provider"]
-    mode_label = "🔒 Admin only" if is_private_mode() else "🌐 Publik"
+    mode_label = "Mode: Admin saja" if is_private_mode() else "Mode: Publik"
     buttons, row = [], []
     for provider in providers:
-        label = f"{provider['name'].upper()} ✓" if provider["name"] == active else provider["name"].upper()
+        label = f"{provider['name'].upper()} (Aktif)" if provider["name"] == active else provider["name"].upper()
         row.append(InlineKeyboardButton(label, callback_data=f"switchprov_{provider['name']}"))
         if len(row) == 2:
             buttons.append(row)
@@ -120,22 +120,22 @@ def api_settings_keyboard():
     if row:
         buttons.append(row)
     buttons.append([
-        InlineKeyboardButton("🔄 Cek Balance", callback_data="cmd_limits"),
+        InlineKeyboardButton("Perbarui Saldo", callback_data="cmd_limits"),
         InlineKeyboardButton(mode_label, callback_data="toggle_access"),
     ])
-    buttons.append([InlineKeyboardButton("↩️ Kembali", callback_data="back_start")])
+    buttons.append([InlineKeyboardButton("Kembali", callback_data="back_start")])
     return InlineKeyboardMarkup(buttons)
 
 
 def limits_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔄 Refresh Balance", callback_data="refresh_limits"),
-         InlineKeyboardButton("⚙️ API", callback_data="open_api")],
-        [InlineKeyboardButton("↩️ Menu", callback_data="back_start")],
+        [InlineKeyboardButton("Perbarui Saldo", callback_data="refresh_limits"),
+         InlineKeyboardButton("Pengaturan API", callback_data="open_api")],
+        [InlineKeyboardButton("Kembali", callback_data="back_start")],
     ])
 
 
 def back_commands_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("↩️ Kembali ke Menu", callback_data="open_commands")]
+        [InlineKeyboardButton("Kembali ke Menu", callback_data="open_commands")]
     ])

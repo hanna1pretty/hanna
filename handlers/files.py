@@ -10,7 +10,9 @@ from pyrogram import filters
 
 from config import MAX_FILE_BYTES, MAX_EXTRACTED_CHARS
 from utils.ai import chat_completion
-from utils.helpers import can_use_bot_async, get_history, get_model_async
+from utils.helpers import (
+    can_use_bot_async, check_public_limit, get_history, get_model_async,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ def register(app, bot_name: str = "default"):
     async def export_handler(c, m):
         uid = m.from_user.id
         if not await can_use_bot_async(uid):
-            return await m.reply_text("Akses ditolak. Bot sedang dalam mode admin only.")
+            return await m.reply_text("Akses ditolak. Bot sedang dalam mode admin saja.")
         history = await get_history(uid, bot_name)
         if not history:
             return await m.reply_text("Riwayat chat masih kosong.")
@@ -66,7 +68,10 @@ def register(app, bot_name: str = "default"):
     async def file_handler(c, m):
         uid = m.from_user.id
         if not await can_use_bot_async(uid):
-            return await m.reply_text("Akses ditolak. Bot sedang dalam mode admin only.")
+            return await m.reply_text("Akses ditolak. Bot sedang dalam mode admin saja.")
+        allowed, limit_message = await check_public_limit(uid)
+        if not allowed:
+            return await m.reply_text(limit_message)
 
         document = m.document
         filename = (document.file_name or "file").strip()
@@ -81,7 +86,7 @@ def register(app, bot_name: str = "default"):
                 f"File terlalu besar. Maksimum {MAX_FILE_BYTES // (1024 * 1024)} MB."
             )
 
-        wait_msg = await m.reply_text("⏳ Membaca file dan menyiapkan jawaban...")
+        wait_msg = await m.reply_text("Sedang membaca file dan menyiapkan jawaban...")
         file_path = None
         try:
             file_path = await m.download()
@@ -114,7 +119,7 @@ def register(app, bot_name: str = "default"):
                     await m.reply_text(reply[start:start + 4096])
         except Exception:
             logger.exception("File handler error uid=%s filename=%s", uid, filename)
-            await wait_msg.edit_text("⚠️ File tidak dapat dibaca atau diproses. Coba format lain.")
+            await wait_msg.edit_text("File tidak dapat dibaca atau diproses. Coba format lain.")
         finally:
             if file_path and os.path.exists(file_path):
                 os.remove(file_path)

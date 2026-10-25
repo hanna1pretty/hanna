@@ -8,7 +8,10 @@ from pyrogram.errors import FloodWait, MessageNotModified
 
 from config import STREAM_UPDATE_INTERVAL
 from utils.ai import StreamingError, chat_completion, stream_chat_completion
-from utils.helpers import add_history, can_use_bot_async, get_history, get_model_async
+from utils.helpers import (
+    add_history, can_use_bot_async, check_public_limit, get_history,
+    get_model_async,
+)
 
 logger = logging.getLogger(__name__)
 TELEGRAM_LIMIT = 4096
@@ -78,8 +81,11 @@ def register(app, bot_name: str = "default"):
         uid = m.from_user.id
         if not await can_use_bot_async(uid):
             return await m.reply_text(
-                f"Akses ditolak. Bot sedang dalam mode admin only.\nID kamu: {uid}"
+                f"Akses ditolak. Bot sedang dalam mode admin saja.\nID kamu: {uid}"
             )
+        allowed, limit_message = await check_public_limit(uid)
+        if not allowed:
+            return await m.reply_text(limit_message)
 
         user_text = (m.text or "").strip()
         wait_msg = await m.reply_text("⏳ Hanna sedang menulis...", parse_mode=ParseMode.DISABLED)

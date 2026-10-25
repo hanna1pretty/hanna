@@ -11,6 +11,7 @@ Bot Telegram berbasis [Pyrogram](https://docs.pyrogram.org/) yang menyediakan ch
 - Image generation melalui endpoint OpenAI-compatible.
 - Beberapa model dan provider yang dapat dipilih.
 - Mode `ADMIN ONLY` sebagai default.
+- Mode publik dengan batas harian user yang dapat dikonfigurasi; admin tidak terkena batas internal.
 - Riwayat chat, model pilihan user, usage log, dan credit tracker di SQLite.
 - Dukungan bot tambahan melalui `BOT_TOKEN_2`, `BOT_TOKEN_3`, dan seterusnya.
 - Docker Compose dengan volume data/log, restart policy, dan healthcheck.
@@ -70,6 +71,8 @@ Variabel penting lainnya:
 | `MAX_FILE_BYTES` | Tidak | `5242880` | Batas file yang dibaca, default 5 MiB. |
 | `MAX_EXTRACTED_CHARS` | Tidak | `20000` | Batas teks file yang dikirim ke AI. |
 | `BOT_TOKEN_2` | Tidak | kosong | Bot tambahan kedua, jika diperlukan. |
+| `PUBLIC_DAILY_REQUEST_LIMIT` | Tidak | `40` | Batas permintaan AI per user publik per hari. |
+| `PUBLIC_DAILY_TOKEN_LIMIT` | Tidak | `100000` | Batas token AI per user publik per hari. |
 
 Bot akan **gagal start dengan sengaja** jika `BOT_TOKEN`, `API_ID`, `API_HASH`, atau `ADMIN_ID` belum valid. Ini mencegah konfigurasi kosong membuat akses admin terbuka kepada semua orang.
 
@@ -87,6 +90,8 @@ Bot akan **gagal start dengan sengaja** jika `BOT_TOKEN`, `API_ID`, `API_HASH`, 
 
 6. Uji chat biasa, `/img sebuah rumah futuristik`, dan foto privat dengan caption.
 7. Biarkan mode `ADMIN ONLY` selama pengujian. Aktifkan mode publik hanya setelah biaya, rate limit, dan provider sudah dipastikan.
+
+Saldo pada menu `Saldo dan Limit` menampilkan saldo live dari endpoint provider bila provider menyediakannya. Pemakaian lokal ditampilkan terpisah dan bukan pengganti saldo provider. Saldo provider tetap tunduk pada limit, model, dan kebijakan provider; mode admin hanya melewati limit internal bot.
 
 > API key yang dimasukkan lewat `/setkey` atau `/setprovider` disimpan di SQLite pada volume `./data`. Batasi akses VPS dan backup file tersebut.
 

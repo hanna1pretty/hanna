@@ -4,7 +4,7 @@ import logging
 from pyrogram import filters
 from config import MAX_IMAGE_BYTES, MAX_PROMPT_LENGTH
 from utils.ai import vision_completion
-from utils.helpers import get_model, can_use_bot
+from utils.helpers import check_public_limit, get_model, can_use_bot
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,10 @@ def register(app, bot_name: str = "default"):
     async def vision_handler(c, m):
         uid = m.from_user.id
         if not can_use_bot(uid):
-            return await m.reply_text("Access denied. Admin only.")
+            return await m.reply_text("Akses ditolak. Bot sedang dalam mode admin saja.")
+        allowed, limit_message = await check_public_limit(uid)
+        if not allowed:
+            return await m.reply_text(limit_message)
 
         prompt = (m.caption or "Describe this image in detail.").strip()
         if len(prompt) > MAX_PROMPT_LENGTH:
@@ -23,7 +26,7 @@ def register(app, bot_name: str = "default"):
             return await m.reply_text(
                 f"Foto terlalu besar. Maksimum {MAX_IMAGE_BYTES // (1024 * 1024)} MB."
             )
-        wait_msg  = await m.reply_text("Analyzing image...")
+        wait_msg  = await m.reply_text("Sedang menganalisis gambar...")
         file_path = None
 
         try:
@@ -43,7 +46,7 @@ def register(app, bot_name: str = "default"):
 
         except Exception as e:
             logger.exception(f"Vision error uid={uid}: {e}")
-            await wait_msg.edit_text("⚠️ Gagal menganalisis gambar. Periksa log server untuk detailnya.")
+            await wait_msg.edit_text("Gagal menganalisis gambar. Silakan coba lagi.")
         finally:
             if file_path and os.path.exists(file_path):
                 os.remove(file_path)

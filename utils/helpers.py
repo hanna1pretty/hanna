@@ -5,7 +5,8 @@ import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from config import (
     DEFAULT_MODEL, DEFAULT_MODELS, DEFAULT_PROVIDERS,
-    BASE_URL, TOP_TOOLS_KEY, ADMIN_IDS, INITIAL_CREDITS, MAX_HISTORY
+    BASE_URL, TOP_TOOLS_KEY, ADMIN_IDS, INITIAL_CREDITS, MAX_HISTORY,
+    PUBLIC_DAILY_REQUEST_LIMIT, PUBLIC_DAILY_TOKEN_LIMIT
 )
 
 logger  = logging.getLogger(__name__)
@@ -164,6 +165,37 @@ async def can_use_bot_async(user_id: int) -> bool:
 
 def can_use_bot(user_id: int) -> bool:  # sync fallback
     return is_admin(user_id) or not _get_private_mode_sync()
+
+async def check_public_limit(user_id: int) -> tuple[bool, str]:
+    """Check the daily public quota; administrators are never limited here."""
+    if is_admin(user_id):
+        return True, ""
+    if await is_private_mode_async():
+        return False, "Bot sedang dalam mode admin saja."
+
+    def _check():
+        with _get_conn() as conn:
+            row = conn.execute(
+                """SELECT COUNT(*) AS requests,
+                          COALESCE(SUM(prompt_tokens + completion_tokens), 0) AS tokens
+                   FROM usage_logs
+                   WHERE user_id=? AND date(created_at)=date('now')""",
+                (user_id,),
+            ).fetchone()
+            requests = int(row["requests"])
+            tokens = int(row["tokens"])
+            if requests >= PUBLIC_DAILY_REQUEST_LIMIT:
+                return False, (
+                    f"Batas harian tercapai: {PUBLIC_DAILY_REQUEST_LIMIT} permintaan. "
+                    "Coba lagi besok."
+                )
+            if tokens >= PUBLIC_DAILY_TOKEN_LIMIT:
+                return False, (
+                    f"Batas token harian tercapai: {PUBLIC_DAILY_TOKEN_LIMIT:,} token. "
+                    "Coba lagi besok."
+                )
+            return True, ""
+    return await _run_db(_check)
 
 def mask_key(key: str) -> str:
     if not key:
