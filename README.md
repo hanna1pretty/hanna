@@ -98,6 +98,8 @@ Paket premium awal yang ditampilkan bot adalah Rp5.000 untuk 7 hari, Rp15.000 un
 
 Menu `Percakapan` memungkinkan user membuat beberapa sesi chat yang terpisah dan berpindah di antaranya tanpa mencampur riwayat. Riwayat lama dimigrasikan ke percakapan `Percakapan lama` saat bot dijalankan setelah update. Command premium admin yang tersedia: `/grantpremium`, `/premiumusers`, dan `/revokepremium`.
 
+Ringkasan lengkap command admin, diagnostik `/ping`, status sistem, premium, provider, backup, dan update tersedia di [ADMIN_COMMANDS.md](ADMIN_COMMANDS.md).
+
 > API key yang dimasukkan lewat `/setkey` atau `/setprovider` disimpan di SQLite pada volume `./data`. Batasi akses VPS dan backup file tersebut.
 
 ## Operasional Docker

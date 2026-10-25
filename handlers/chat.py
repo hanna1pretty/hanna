@@ -21,6 +21,7 @@ RESERVED_COMMANDS = [
     "api", "apikey", "balance", "saldo", "limits", "setbalance",
     "setkey", "seturl", "setprovider", "addmodel", "delmodel",
     "premium", "grantpremium", "premiumusers", "revokepremium",
+    "ping", "status", "adminhelp", "admin_help",
 ]
 
 
