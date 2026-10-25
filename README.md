@@ -15,6 +15,7 @@ Bot Telegram berbasis [Pyrogram](https://docs.pyrogram.org/) yang menyediakan ch
 - Riwayat chat, model pilihan user, usage log, dan credit tracker di SQLite.
 - Dukungan bot tambahan melalui `BOT_TOKEN_2`, `BOT_TOKEN_3`, dan seterusnya.
 - Docker Compose dengan volume data/log, restart policy, dan healthcheck.
+- Rich text jawaban AI: judul, bold, italic, quote, daftar, inline code, dan code block berbahasa.
 
 ## Persyaratan
 
@@ -198,6 +199,8 @@ Untuk mengaktifkan fitur ini setelah update, rebuild container agar dependency `
 Halaman Balance memisahkan `Provider Balance` dari `Local Estimasi`. Dokumentasi Top Tools AI menyediakan endpoint chat/image dan batas penggunaan, tetapi tidak mendokumentasikan endpoint publik khusus untuk saldo akun. Karena itu bot tidak akan mengklaim tracker SQLite sebagai saldo provider. Tombol `Refresh Balance` tetap mencoba endpoint yang tersedia; jika tidak ada respons resmi, gunakan dashboard Top Tools untuk saldo aktual.
 
 Chat teks sekarang meminta mode SSE streaming. Hanna mengedit pesan Telegram secara berkala, bukan untuk setiap token, agar respons mulai terlihat lebih cepat tanpa memicu FloodWait. Jika provider tidak mendukung streaming atau gagal sebelum token pertama, bot otomatis memakai mode non-streaming. Jika stream terputus setelah sebagian teks diterima, bot tidak mengulang request secara otomatis agar tidak berisiko menggandakan biaya.
+
+Jawaban AI dirender dari Markdown umum ke HTML Telegram. Fenced code seperti ` ```python ` sekarang menjadi blok kode monospaced yang dapat disalin, bukan teks literal tiga backtick. Renderer juga mendukung heading, bold, italic, inline code, quote, dan daftar secara aman. Saat AI masih memproses, placeholder `Hanna sedang menulis` dianimasikan dengan titik berjalan. Telegram Bot API mendukung entity dasar tersebut, tetapi Rich Messages/Editor penuh seperti tabel native, formula, media inline, dan blok rich khusus belum diekspos oleh Pyrogram yang dipakai aplikasi ini; tabel dari AI tetap dirender sebagai teks agar kompatibel lintas client.
 
 Setiap request chat juga menerima timestamp server terbaru dalam zona `Asia/Jakarta (WIB)`. Pertanyaan tentang jam, tanggal, dan hari dapat dijawab berdasarkan timestamp tersebut. Ini bukan akses internet umum: pertanyaan real-time seperti berita, cuaca, harga, atau event tetap membutuhkan sumber data/tool khusus dan tidak boleh dianggap live hanya karena fitur streaming aktif.
 

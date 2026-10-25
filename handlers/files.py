@@ -14,6 +14,7 @@ from utils.ai import chat_completion
 from utils.helpers import (
     can_use_bot_async, check_public_limit, get_history, get_model_async,
 )
+from utils.telegram_format import format_ai_response, split_raw_response
 
 logger = logging.getLogger(__name__)
 
@@ -112,12 +113,10 @@ def register(app, bot_name: str = "default"):
             reply = await chat_completion(
                 uid, model, history + [{"role": "user", "content": prompt}], bot_name
             )
-            if len(reply) <= 4096:
-                await wait_msg.edit_text(reply)
-            else:
-                await wait_msg.delete()
-                for start in range(0, len(reply), 4096):
-                    await m.reply_text(reply[start:start + 4096])
+            chunks = split_raw_response(reply, 3900)
+            await wait_msg.edit_text(format_ai_response(chunks[0]), parse_mode=ParseMode.HTML)
+            for chunk in chunks[1:]:
+                await m.reply_text(format_ai_response(chunk), parse_mode=ParseMode.HTML)
         except Exception:
             logger.exception("File handler error uid=%s filename=%s", uid, filename)
             await wait_msg.edit_text("File tidak dapat dibaca atau diproses. Coba format lain.")

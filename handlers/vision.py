@@ -6,6 +6,7 @@ from pyrogram.enums import ParseMode
 from config import MAX_IMAGE_BYTES, MAX_PROMPT_LENGTH
 from utils.ai import vision_completion
 from utils.helpers import check_public_limit, get_model, can_use_bot
+from utils.telegram_format import format_ai_response, split_raw_response
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +39,10 @@ def register(app, bot_name: str = "default"):
             active_model = get_model(uid, bot_name)
             reply = await vision_completion(uid, active_model, prompt, b64_img, bot_name)
 
-            if len(reply) <= 4096:
-                await wait_msg.edit_text(reply)
-            else:
-                await wait_msg.delete()
-                for i in range(0, len(reply), 4096):
-                    await m.reply_text(reply[i:i+4096])
+            chunks = split_raw_response(reply, 3900)
+            await wait_msg.edit_text(format_ai_response(chunks[0]), parse_mode=ParseMode.HTML)
+            for chunk in chunks[1:]:
+                await m.reply_text(format_ai_response(chunk), parse_mode=ParseMode.HTML)
 
         except Exception as e:
             logger.exception(f"Vision error uid={uid}: {e}")
