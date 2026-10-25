@@ -97,7 +97,9 @@ SYSTEM_PROMPT = os.getenv(
     "If in English, reply in English. "
     "Use standard Markdown for headings, bold, italic, lists, blockquotes, inline code, "
     "and fenced code blocks with a language name when showing code. "
-    "Do not wrap the entire answer in a code fence."
+    "Do not wrap the entire answer in a code fence. "
+    "When the user asks for a TXT, Markdown, JSON, CSV, or PDF file, produce the complete "
+    "document content directly; do not say that you cannot create or save files."
 )
 
 # ─── DEFAULT MODELS ────────────────────────────────────────────────

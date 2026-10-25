@@ -73,7 +73,7 @@ def start_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("CHAT AI", callback_data="cmd_chat"),
          InlineKeyboardButton("PILIH MODEL", callback_data="open_models")],
-        [InlineKeyboardButton("BACA FILE", callback_data="cmd_file"),
+        [InlineKeyboardButton("FILE & DOKUMEN", callback_data="cmd_file"),
          InlineKeyboardButton("ANALISIS GAMBAR", callback_data="cmd_vision")],
         [InlineKeyboardButton("SALDO & LIMIT", callback_data="cmd_limits"),
          InlineKeyboardButton("BANTUAN", callback_data="cmd_help")],
@@ -87,7 +87,7 @@ def commands_keyboard():
         [InlineKeyboardButton("CHAT AI", callback_data="cmd_chat"),
          InlineKeyboardButton("BUAT GAMBAR", callback_data="cmd_image")],
         [InlineKeyboardButton("ANALISIS GAMBAR", callback_data="cmd_vision"),
-         InlineKeyboardButton("BACA FILE", callback_data="cmd_file")],
+         InlineKeyboardButton("FILE & DOKUMEN", callback_data="cmd_file")],
         [InlineKeyboardButton("HAPUS RIWAYAT", callback_data="cmd_clear"),
          InlineKeyboardButton("SALDO & LIMIT", callback_data="cmd_limits")],
         [InlineKeyboardButton("PERCAKAPAN", callback_data="open_conversations"),

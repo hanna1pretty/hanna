@@ -271,7 +271,9 @@ def register(app, bot_name: str = "default"):
             await q.answer()
             await safe_edit(q.message,
                 "<b>BACA FILE</b>\n\nKirim file TXT, MD, CSV, JSON, LOG, atau PDF di chat pribadi ini.\n"
-                "Ukuran maksimum 5 MB. Gunakan /export untuk mengunduh riwayat chat.",
+                "Untuk membuat dokumen, minta langsung: <i>buatkan PDF tentang...</i> atau "
+                "<i>simpan sebagai TXT</i>. Jawaban panjang otomatis dikirim sebagai TXT.\n"
+                "Ukuran file masuk maksimum 5 MB. Gunakan /export untuk mengunduh riwayat chat.",
                 reply_markup=kb.back_commands_keyboard(),
                 parse_mode=ParseMode.HTML)
 
@@ -291,7 +293,9 @@ def register(app, bot_name: str = "default"):
                 "/img &lt;deskripsi&gt; - Buat gambar\n"
                 "/export - Unduh riwayat chat\n"
                 "/clear - Hapus riwayat chat\n\n"
-                "Untuk membaca file, kirim TXT, CSV, JSON, LOG, atau PDF secara langsung.",
+                "Untuk membaca file, kirim TXT, CSV, JSON, LOG, atau PDF secara langsung.\n"
+                "Untuk membuat dokumen, gunakan prompt seperti: <i>buatkan PDF tentang...</i> "
+                "atau <i>simpan jawaban ini sebagai TXT</i>.",
                 reply_markup=kb.back_commands_keyboard(), parse_mode=ParseMode.HTML)
         else:
             await q.continue_propagation()

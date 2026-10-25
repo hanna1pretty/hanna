@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+import os
 
 from pyrogram import filters
 from pyrogram.enums import ParseMode
@@ -13,6 +14,7 @@ from utils.helpers import (
     get_history, get_model_async,
 )
 from utils.telegram_format import format_ai_response, split_raw_response
+from utils.file_export import create_export_file, detect_export_format, should_export
 
 logger = logging.getLogger(__name__)
 TELEGRAM_LIMIT = 4096
@@ -85,8 +87,37 @@ async def _animate_placeholder(message, stop_event: asyncio.Event):
             continue
 
 
-async def _finalize_message(client, wait_msg, reply: str) -> None:
+async def _finalize_message(client, wait_msg, reply: str, prompt: str = "") -> None:
     reply = (reply or "").strip()
+    if should_export(prompt, reply):
+        extension = detect_export_format(prompt) or "txt"
+        file_path = None
+        try:
+            file_path = await asyncio.to_thread(create_export_file, prompt, reply, extension)
+            caption = (
+                f"<b>FILE SIAP</b>\n"
+                f"Format: <code>.{extension}</code>\n"
+                "Dibuat otomatis oleh Hanna AI."
+            )
+            await client.send_document(
+                wait_msg.chat.id, str(file_path), caption=caption,
+                parse_mode=ParseMode.HTML,
+            )
+            await wait_msg.delete()
+        except Exception:
+            logger.exception("Could not create or send export file")
+            await wait_msg.edit_text(
+                "<b>File belum dapat dibuat</b>\n\n"
+                "Coba lagi dengan format TXT atau Markdown, atau periksa log container.",
+                parse_mode=ParseMode.HTML,
+            )
+        finally:
+            if file_path:
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    logger.warning("Could not remove export file %s", file_path)
+        return
     chunks = split_raw_response(reply, FORMAT_LIMIT)
     first = format_ai_response(chunks[0])
     if len(chunks) == 1 and len(first) <= TELEGRAM_LIMIT:
@@ -158,7 +189,7 @@ def register(app, bot_name: str = "default"):
                     reply = await chat_completion(uid, model, history_with_user, bot_name)
 
             await add_history(uid, "assistant", reply, bot_name)
-            await _finalize_message(c, wait_msg, reply)
+            await _finalize_message(c, wait_msg, reply, user_text)
         except Exception:
             logger.exception("chat_handler error uid=%s", uid)
             try:
