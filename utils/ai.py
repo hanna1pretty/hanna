@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import json
 import logging
+import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -113,9 +114,11 @@ async def _stream_once(url: str, headers: dict, payload: dict, on_text=None):
     usage = {}
     last_sent = ""
     finished = False
+    started_at = time.perf_counter()
+    first_piece_at = None
 
     async def process_line(raw_line: str):
-        nonlocal last_sent, finished
+        nonlocal last_sent, finished, first_piece_at
         line = raw_line.strip()
         if not line or line.startswith(":") or not line.startswith("data:"):
             return
@@ -139,6 +142,9 @@ async def _stream_once(url: str, headers: dict, payload: dict, on_text=None):
         piece = _content_from_delta(delta.get("content", ""))
         if not piece:
             return
+        if first_piece_at is None:
+            first_piece_at = time.perf_counter()
+            logger.info("AI first token in %.0f ms url=%s", (first_piece_at - started_at) * 1000, url)
         pieces.append(piece)
         current = "".join(pieces)
         if on_text and current != last_sent:
@@ -168,6 +174,7 @@ async def _stream_once(url: str, headers: dict, payload: dict, on_text=None):
             if not finished and buffer:
                 await process_line(buffer)
 
+    logger.info("AI stream completed in %.0f ms url=%s", (time.perf_counter() - started_at) * 1000, url)
     return "".join(pieces).strip(), usage
 
 
@@ -195,6 +202,7 @@ async def stream_chat_completion(uid: int, model: str, history: list,
             if inspect.isawaitable(result):
                 await result
 
+    request_started = time.perf_counter()
     for attempt in range(1, API_RETRIES + 1):
         try:
             reply, usage = await _stream_once(url, headers, payload, on_text=_capture)
@@ -203,7 +211,11 @@ async def stream_chat_completion(uid: int, model: str, history: list,
             p_tokens = usage.get("prompt_tokens") or _estimate_tokens(str(messages))
             c_tokens = usage.get("completion_tokens") or _estimate_tokens(reply)
             _record_usage_background(uid, provider, model, p_tokens, c_tokens, bot_name)
-            logger.info("[%s] streamed uid=%s model=%s in=%s out=%s", bot_name, uid, model, p_tokens, c_tokens)
+            logger.info(
+                "[%s] streamed uid=%s model=%s in=%s out=%s total_ms=%.0f",
+                bot_name, uid, model, p_tokens, c_tokens,
+                (time.perf_counter() - request_started) * 1000,
+            )
             return reply
         except StreamingError:
             raise

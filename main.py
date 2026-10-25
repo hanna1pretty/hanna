@@ -1,6 +1,14 @@
 import os
 import asyncio
 import logging
+import os
+
+try:
+    import uvloop
+    uvloop.install()
+except ImportError:
+    uvloop = None
+
 from pyrogram import Client
 from config import (
     BOT_TOKEN, API_ID, API_HASH, EXTRA_TOKENS,

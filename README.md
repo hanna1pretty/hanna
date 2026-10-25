@@ -204,6 +204,10 @@ Jawaban AI dirender dari Markdown umum ke HTML Telegram. Fenced code seperti ` `
 
 Loading chat kini memakai animasi progress bar bergaya terminal: `HANNA AI // PROCESSING`, bar `█`/`░`, persentase bergerak, dan status neural pipeline. Menu inline juga menggunakan label uppercase yang konsisten, seperti `CHAT AI`, `PILIH MODEL`, `PERCAKAPAN`, dan `PREMIUM`. Command `/ping` menampilkan kartu `SERVER MONITOR` dengan health status Telegram API dan SQLite, bar CPU/memory/disk, uptime, ukuran database, provider, mode akses, serta jumlah premium aktif.
 
+Spinner loading sekarang menggunakan frame Braille `⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏`. Telegram tidak menyediakan warna teks atau ANSI color pada pesan bot biasa, sehingga spinner tidak dapat diberi warna seperti terminal. Warna hanya dapat disimulasikan dengan emoji/custom emoji, dan custom emoji memiliki syarat akun/bot tertentu; spinner Braille monokrom lebih ringan dan konsisten di berbagai client.
+
+Dependency `uvloop` diaktifkan otomatis di Linux/Docker untuk mempercepat event loop asyncio. Ini dapat mengurangi overhead lokal, tetapi tidak mengubah latency model/provider. Log sekarang mencatat waktu first token dan total stream, sehingga penyebab lambat dapat dibedakan antara database, jaringan Telegram, koneksi provider, dan waktu inferensi model. API ID/API hash hanya untuk koneksi Telegram Pyrogram; keduanya tidak membuat model AI lebih cepat. Docker juga bukan akselerator AI—kecepatan terutama ditentukan provider, model, lokasi VPS, jaringan, panjang history, dan apakah provider mengirim SSE streaming.
+
 Setiap request chat juga menerima timestamp server terbaru dalam zona `Asia/Jakarta (WIB)`. Pertanyaan tentang jam, tanggal, dan hari dapat dijawab berdasarkan timestamp tersebut. Ini bukan akses internet umum: pertanyaan real-time seperti berita, cuaca, harga, atau event tetap membutuhkan sumber data/tool khusus dan tidak boleh dianggap live hanya karena fitur streaming aktif.
 
 ## Audit yang sudah dilakukan
