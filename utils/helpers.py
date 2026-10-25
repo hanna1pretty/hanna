@@ -261,6 +261,38 @@ async def is_premium_user(user_id: int, bot_name: str = "default") -> bool:
             return row is not None
     return await _run_db(_check)
 
+
+def is_premium_user_sync(user_id: int, bot_name: str = "default") -> bool:
+    with _get_conn() as conn:
+        row = conn.execute(
+            """SELECT 1 FROM premium_users
+               WHERE user_id=? AND bot_name=? AND expires_at > datetime('now')""",
+            (user_id, bot_name),
+        ).fetchone()
+        return row is not None
+
+
+def get_model_info(model_id: str) -> dict | None:
+    with _get_conn() as conn:
+        row = conn.execute("SELECT * FROM models WHERE id=?", (model_id,)).fetchone()
+        return dict(row) if row else None
+
+
+async def can_use_model_async(user_id: int, model_id: str, bot_name: str = "default") -> tuple[bool, str]:
+    if is_admin(user_id) or await is_premium_user(user_id, bot_name):
+        return True, ""
+    model = await _run_db(lambda: get_model_info(model_id))
+    if not model or str(model.get("cat", "")).lower() == "free":
+        return True, ""
+    admin_contact = ", ".join(str(value) for value in ADMIN_IDS) or "admin bot"
+    return False, (
+        "<b>AKSES PREMIUM DIPERLUKAN</b>\n\n"
+        f"Model <code>{model['name']}</code> termasuk kategori Pay as you go.\n"
+        "User publik dapat menggunakan model gratis. Untuk memakai model Pay as you go, "
+        "aktifkan paket premium melalui admin.\n\n"
+        f"ID admin: <code>{admin_contact}</code>"
+    )
+
 async def grant_premium(user_id: int, days: int, bot_name: str = "default"):
     if days <= 0 or days > 3650:
         raise ValueError("days must be between 1 and 3650")

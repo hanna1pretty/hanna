@@ -12,7 +12,8 @@ from pyrogram.enums import ParseMode
 from config import MAX_FILE_BYTES, MAX_EXTRACTED_CHARS
 from utils.ai import chat_completion
 from utils.helpers import (
-    can_use_bot_async, check_public_limit, get_history, get_model_async,
+    can_use_bot_async, can_use_model_async, check_public_limit, get_history,
+    get_model_async,
 )
 from utils.telegram_format import format_ai_response, split_raw_response
 
@@ -102,6 +103,9 @@ def register(app, bot_name: str = "default"):
             model, history = await asyncio.gather(
                 get_model_async(uid, bot_name), get_history(uid, bot_name)
             )
+            model_allowed, model_message = await can_use_model_async(uid, model, bot_name)
+            if not model_allowed:
+                return await wait_msg.edit_text(model_message, parse_mode=ParseMode.HTML)
             instruction = (m.caption or "Ringkas dan jelaskan isi file ini secara terstruktur.").strip()
             prompt = (
                 f"Tugas pengguna: {instruction}\n\n"

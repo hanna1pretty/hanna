@@ -15,7 +15,8 @@ from utils.helpers import (
     create_conversation, switch_conversation,
     get_active_api, mask_key, switch_provider,
     is_admin, can_use_bot_async, is_private_mode, toggle_private_mode,
-    get_credit_summary_sync, get_credit_summary, is_premium_user, model_exists
+    get_credit_summary_sync, get_credit_summary, is_premium_user, model_exists,
+    can_use_model_async
 )
 from utils.ai import check_live_api_balance
 
@@ -55,10 +56,17 @@ def premium_offer_text(active: bool = False) -> str:
     )
     status = "Aktif" if active else "Belum aktif"
     return (
-        "<b>AKSES PREMIUM</b>\n\n"
-        f"Status: <code>{status}</code>\n\n"
+        "<b>HANNA AI  /  PREMIUM ACCESS</b>\n"
+        "<code>EXTENDED WORKSPACE PRIVILEGES</code>\n\n"
+        f"Status akun: <b>{status}</b>\n\n"
+        "<b>PREMIUM INCLUDE</b>\n"
+        "• Akses model Pay as you go\n"
+        "• Melewati limit publik harian\n"
+        "• Akses vision dan pemrosesan file\n"
+        "• Multi-conversation tanpa batas internal\n\n"
+        "<b>PAKET TERSEDIA</b>\n"
         f"{package_lines}\n\n"
-        "Paket di atas adalah harga awal dan dapat disesuaikan owner. "
+        "Paket di atas adalah harga awal dan dapat disesuaikan owner.\n\n"
         "Pembayaran dilakukan manual kepada admin. Setelah pembayaran diverifikasi, "
         "admin mengaktifkan akses premium untuk akun Telegram Anda."
     )
@@ -207,6 +215,9 @@ def register(app, bot_name: str = "default"):
             mid = d.split("setmodel_", 1)[1]
             if not mid or len(mid) > 120 or not model_exists(mid):
                 return await q.answer("Model tidak tersedia.", show_alert=True)
+            model_allowed, model_message = await can_use_model_async(uid, mid, bot_name)
+            if not model_allowed:
+                return await q.answer("Model ini khusus premium.", show_alert=True)
             await set_model(uid, mid, bot_name)
             await q.answer(f"Model aktif: {mid}", show_alert=True)
             await safe_edit(q.message,

@@ -9,8 +9,8 @@ from pyrogram.errors import FloodWait, MessageNotModified
 from config import STREAM_UPDATE_INTERVAL
 from utils.ai import StreamingError, chat_completion, stream_chat_completion
 from utils.helpers import (
-    add_history, can_use_bot_async, check_public_limit, get_history,
-    get_model_async,
+    add_history, can_use_bot_async, can_use_model_async, check_public_limit,
+    get_history, get_model_async,
 )
 from utils.telegram_format import format_ai_response, split_raw_response
 
@@ -30,8 +30,9 @@ RESERVED_COMMANDS = [
 class TelegramStreamEditor:
     """Throttle Telegram edits while rendering partial AI Markdown as HTML."""
 
-    def __init__(self, message):
+    def __init__(self, message, stop_spinner: asyncio.Event | None = None):
         self.message = message
+        self.stop_spinner = stop_spinner
         self.last_text = ""
         self.last_update = 0.0
         self.lock = asyncio.Lock()
@@ -39,6 +40,8 @@ class TelegramStreamEditor:
     async def update(self, text: str, force: bool = False):
         if not text:
             return
+        if self.stop_spinner:
+            self.stop_spinner.set()
         async with self.lock:
             now = time.monotonic()
             if not force and now - self.last_update < STREAM_UPDATE_INTERVAL:
@@ -77,7 +80,7 @@ async def _animate_placeholder(message, stop_event: asyncio.Event):
             logger.debug("Could not animate placeholder", exc_info=True)
         index += 1
         try:
-            await asyncio.wait_for(stop_event.wait(), timeout=0.45)
+            await asyncio.wait_for(stop_event.wait(), timeout=max(0.8, STREAM_UPDATE_INTERVAL))
         except asyncio.TimeoutError:
             continue
 
@@ -130,11 +133,14 @@ def register(app, bot_name: str = "default"):
                 get_model_async(uid, bot_name),
                 get_history(uid, bot_name),
             )
+            model_allowed, model_message = await can_use_model_async(uid, model, bot_name)
+            if not model_allowed:
+                stop_animation.set()
+                await asyncio.gather(animation_task, return_exceptions=True)
+                return await wait_msg.edit_text(model_message, parse_mode=ParseMode.HTML)
             await add_history(uid, "user", user_text, bot_name)
-            editor = TelegramStreamEditor(wait_msg)
+            editor = TelegramStreamEditor(wait_msg, stop_spinner=stop_animation)
             history_with_user = history + [{"role": "user", "content": user_text}]
-            stop_animation.set()
-            await asyncio.gather(animation_task, return_exceptions=True)
 
             try:
                 reply = await stream_chat_completion(
@@ -147,6 +153,7 @@ def register(app, bot_name: str = "default"):
                     logger.warning("Partial streaming response for uid=%s: %s", uid, error)
                 else:
                     logger.warning("Streaming unavailable for uid=%s; using normal mode: %s", uid, error)
+                    stop_animation.set()
                     await editor.update("> Streaming tidak tersedia, mencoba mode normal...", force=True)
                     reply = await chat_completion(uid, model, history_with_user, bot_name)
 

@@ -5,7 +5,7 @@ from pyrogram import filters
 from pyrogram.enums import ParseMode
 from config import MAX_IMAGE_BYTES, MAX_PROMPT_LENGTH
 from utils.ai import vision_completion
-from utils.helpers import check_public_limit, get_model, can_use_bot
+from utils.helpers import can_use_bot, can_use_model_async, check_public_limit, get_model
 from utils.telegram_format import format_ai_response, split_raw_response
 
 logger = logging.getLogger(__name__)
@@ -37,6 +37,11 @@ def register(app, bot_name: str = "default"):
                 b64_img = base64.b64encode(f.read()).decode("utf-8")
 
             active_model = get_model(uid, bot_name)
+            model_allowed, model_message = await can_use_model_async(
+                uid, "DeepSeek-V4-Flash-Vision-Exp", bot_name
+            )
+            if not model_allowed:
+                return await wait_msg.edit_text(model_message, parse_mode=ParseMode.HTML)
             reply = await vision_completion(uid, active_model, prompt, b64_img, bot_name)
 
             chunks = split_raw_response(reply, 3900)

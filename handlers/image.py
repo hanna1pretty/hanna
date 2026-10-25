@@ -2,7 +2,7 @@ import logging
 from pyrogram import filters
 from pyrogram.enums import ParseMode
 from utils.ai import generate_image
-from utils.helpers import can_use_bot, check_public_limit
+from utils.helpers import can_use_bot, check_public_limit, is_admin, is_premium_user
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,13 @@ def register(app, bot_name: str = "default"):
         allowed, limit_message = await check_public_limit(uid, bot_name)
         if not allowed:
             return await m.reply_text(limit_message, parse_mode=ParseMode.HTML)
+        if not is_admin(uid) and not await is_premium_user(uid, bot_name):
+            return await m.reply_text(
+                "<b>AKSES PREMIUM DIPERLUKAN</b>\n\n"
+                "Pembuatan gambar menggunakan provider berbayar. "
+                "Aktifkan paket premium melalui admin untuk melanjutkan.",
+                parse_mode=ParseMode.HTML,
+            )
         if len(m.command) < 2:
             return await m.reply_text("Usage: /img <prompt>\n\nExample: /img futuristic city at night")
 

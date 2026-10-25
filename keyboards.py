@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from utils.helpers import (
     get_all_models, get_model, get_providers, get_active_api,
-    is_private_mode, list_conversations,
+    is_admin, is_premium_user_sync, is_private_mode, list_conversations,
 )
 
 WIB = ZoneInfo("Asia/Jakarta")
@@ -54,14 +54,18 @@ def welcome_text(user, bot_name: str = "HANNA AI", now: datetime | None = None):
         f"{MONTHS_ID[current.month - 1]} {current.year} — {current:%H:%M:%S} WIB"
     )
     return (
-        f"<b>{time_greeting(current)}, {name}.</b>\n\n"
-        f"<code>{time_text}</code>\n"
-        "--------------------\n"
-        f"<b>Nama:</b> {name}\n"
-        f"<b>Asisten:</b> {html.escape(bot_name)}\n"
-        "--------------------\n\n"
+        f"<b>{html.escape(bot_name.upper())}</b>\n"
+        "<code>PERSONAL AI WORKSPACE  /  ONLINE</code>\n\n"
+        f"<b>{time_greeting(current)}, {name}.</b>\n"
+        f"<code>{time_text}</code>\n\n"
+        "<b>WORKSPACE</b>\n"
+        "Chat dengan AI, pilih model, kelola percakapan, analisis file, "
+        "dan gunakan fitur vision dalam satu ruang kerja.\n\n"
+        "<b>ACCESS</b>\n"
+        "Model gratis tersedia untuk pengguna publik. Model Pay as you go "
+        "tersedia bagi admin dan akun premium.\n\n"
         f"<i>\"{quote}\"</i>\n\n"
-        "Pilih menu di bawah atau kirim pesan langsung."
+        "Pilih modul di bawah atau langsung kirim pesan untuk memulai."
     )
 
 
@@ -74,7 +78,7 @@ def start_keyboard():
         [InlineKeyboardButton("SALDO & LIMIT", callback_data="cmd_limits"),
          InlineKeyboardButton("BANTUAN", callback_data="cmd_help")],
         [InlineKeyboardButton("PERCAKAPAN", callback_data="open_conversations"),
-         InlineKeyboardButton("PREMIUM", callback_data="cmd_premium")],
+         InlineKeyboardButton("AKSES PREMIUM", callback_data="cmd_premium")],
     ])
 
 
@@ -87,7 +91,7 @@ def commands_keyboard():
         [InlineKeyboardButton("HAPUS RIWAYAT", callback_data="cmd_clear"),
          InlineKeyboardButton("SALDO & LIMIT", callback_data="cmd_limits")],
         [InlineKeyboardButton("PERCAKAPAN", callback_data="open_conversations"),
-         InlineKeyboardButton("PREMIUM", callback_data="cmd_premium")],
+         InlineKeyboardButton("AKSES PREMIUM", callback_data="cmd_premium")],
         [InlineKeyboardButton("PILIH MODEL", callback_data="open_models"),
          InlineKeyboardButton("PENGATURAN API", callback_data="open_api")],
         [InlineKeyboardButton("KEMBALI", callback_data="back_start")],
@@ -106,9 +110,12 @@ def category_keyboard():
 def models_keyboard(cat: str = "All", user_id: int | None = None, bot_name: str = "default"):
     models = get_all_models(cat)
     active_model = get_model(user_id, bot_name) if user_id is not None else None
+    premium_access = user_id is not None and (is_admin(user_id) or is_premium_user_sync(user_id, bot_name))
     buttons = [
         [InlineKeyboardButton(
-            f"{m['name']} - {m['cat']}" + (" (Aktif)" if m["id"] == active_model else ""),
+            f"{m['name']} — {m['cat']}"
+            + ("  • AKTIF" if m["id"] == active_model else "")
+            + ("  • PREMIUM" if m["cat"].lower() != "free" and not premium_access else ""),
             callback_data=f"setmodel_{m['id']}"
         )]
         for m in models
