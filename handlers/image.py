@@ -1,5 +1,6 @@
 import logging
 from pyrogram import filters
+from pyrogram.enums import ParseMode
 from utils.ai import generate_image
 from utils.helpers import can_use_bot, check_public_limit
 
@@ -14,7 +15,7 @@ def register(app, bot_name: str = "default"):
             return await m.reply_text("Akses ditolak. Bot sedang dalam mode admin saja.")
         allowed, limit_message = await check_public_limit(uid)
         if not allowed:
-            return await m.reply_text(limit_message)
+            return await m.reply_text(limit_message, parse_mode=ParseMode.HTML)
         if len(m.command) < 2:
             return await m.reply_text("Usage: /img <prompt>\n\nExample: /img futuristic city at night")
 

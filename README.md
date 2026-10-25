@@ -61,6 +61,7 @@ Variabel penting lainnya:
 | `TOP_TOOLS_API_KEY` | Tidak | kosong | API key provider awal. Jika kosong, set melalui `/setkey`. |
 | `BASE_URL` | Tidak | `https://top-tools-ai.com/api/v1` | Base URL OpenAI-compatible provider awal. |
 | `INITIAL_CREDITS` | Tidak | `220.00` | Saldo acuan untuk credit tracker lokal. |
+| `DEFAULT_MODEL` | Tidak | `top-tools-ai` | Model awal untuk user baru; owner dapat memilih model Pay as you go secara manual. |
 | `MAX_HISTORY` | Tidak | `20` | Jumlah pesan history per user dan bot. |
 | `API_TIMEOUT` | Tidak | `60` | Timeout request provider dalam detik. |
 | `API_RETRIES` | Tidak | `2` | Jumlah percobaan request. |
@@ -91,7 +92,7 @@ Bot akan **gagal start dengan sengaja** jika `BOT_TOKEN`, `API_ID`, `API_HASH`, 
 6. Uji chat biasa, `/img sebuah rumah futuristik`, dan foto privat dengan caption.
 7. Biarkan mode `ADMIN ONLY` selama pengujian. Aktifkan mode publik hanya setelah biaya, rate limit, dan provider sudah dipastikan.
 
-Saldo pada menu `Saldo dan Limit` menampilkan saldo live dari endpoint provider bila provider menyediakannya. Pemakaian lokal ditampilkan terpisah dan bukan pengganti saldo provider. Saldo provider tetap tunduk pada limit, model, dan kebijakan provider; mode admin hanya melewati limit internal bot.
+Saldo pada menu `Saldo dan Limit` menampilkan saldo live dari endpoint provider bila provider menyediakannya. Pemakaian lokal ditampilkan terpisah dan bukan pengganti saldo provider. Saldo provider tetap tunduk pada limit, model, dan kebijakan provider; mode admin hanya melewati limit internal bot. Saat user publik mencapai limit, bot menampilkan instruksi untuk menghubungi admin terkait pembelian credit atau akses premium. Pembayaran belum otomatis dan tetap dilakukan melalui alur resmi provider/admin.
 
 > API key yang dimasukkan lewat `/setkey` atau `/setprovider` disimpan di SQLite pada volume `./data`. Batasi akses VPS dan backup file tersebut.
 

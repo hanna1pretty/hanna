@@ -85,7 +85,7 @@ def register(app, bot_name: str = "default"):
             )
         allowed, limit_message = await check_public_limit(uid)
         if not allowed:
-            return await m.reply_text(limit_message)
+            return await m.reply_text(limit_message, parse_mode=ParseMode.HTML)
 
         user_text = (m.text or "").strip()
         wait_msg = await m.reply_text("⏳ Hanna sedang menulis...", parse_mode=ParseMode.DISABLED)

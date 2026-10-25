@@ -174,6 +174,16 @@ async def check_public_limit(user_id: int) -> tuple[bool, str]:
         return False, "Bot sedang dalam mode admin saja."
 
     def _check():
+        admin_contact = ", ".join(str(value) for value in ADMIN_IDS) or "admin bot"
+
+        def premium_message(reason: str) -> str:
+            return (
+                f"<b>Limit penggunaan tercapai</b>\n\n"
+                f"{reason}\n\n"
+                "Ingin melanjutkan? Hubungi admin untuk membeli credit atau mengaktifkan akses premium.\n"
+                f"ID admin: <code>{admin_contact}</code>"
+            )
+
         with _get_conn() as conn:
             row = conn.execute(
                 """SELECT COUNT(*) AS requests,
@@ -185,14 +195,12 @@ async def check_public_limit(user_id: int) -> tuple[bool, str]:
             requests = int(row["requests"])
             tokens = int(row["tokens"])
             if requests >= PUBLIC_DAILY_REQUEST_LIMIT:
-                return False, (
-                    f"Batas harian tercapai: {PUBLIC_DAILY_REQUEST_LIMIT} permintaan. "
-                    "Coba lagi besok."
+                return False, premium_message(
+                    f"Batas harian tercapai: {PUBLIC_DAILY_REQUEST_LIMIT} permintaan."
                 )
             if tokens >= PUBLIC_DAILY_TOKEN_LIMIT:
-                return False, (
-                    f"Batas token harian tercapai: {PUBLIC_DAILY_TOKEN_LIMIT:,} token. "
-                    "Coba lagi besok."
+                return False, premium_message(
+                    f"Batas token harian tercapai: {PUBLIC_DAILY_TOKEN_LIMIT:,} token."
                 )
             return True, ""
     return await _run_db(_check)

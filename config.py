@@ -57,7 +57,7 @@ BASE_URL      = os.getenv("BASE_URL", "https://top-tools-ai.com/api/v1")
 
 # ─── KREDIT & MODEL ────────────────────────────────────────────────
 INITIAL_CREDITS = float(os.getenv("INITIAL_CREDITS", "220.00"))
-DEFAULT_MODEL   = "top-tools-ai"
+DEFAULT_MODEL   = os.getenv("DEFAULT_MODEL", "top-tools-ai").strip() or "top-tools-ai"
 
 # Max history per user (configurable)
 MAX_HISTORY = int(os.getenv("MAX_HISTORY", "20"))

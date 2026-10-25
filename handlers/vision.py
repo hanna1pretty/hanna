@@ -2,6 +2,7 @@ import base64
 import os
 import logging
 from pyrogram import filters
+from pyrogram.enums import ParseMode
 from config import MAX_IMAGE_BYTES, MAX_PROMPT_LENGTH
 from utils.ai import vision_completion
 from utils.helpers import check_public_limit, get_model, can_use_bot
@@ -17,7 +18,7 @@ def register(app, bot_name: str = "default"):
             return await m.reply_text("Akses ditolak. Bot sedang dalam mode admin saja.")
         allowed, limit_message = await check_public_limit(uid)
         if not allowed:
-            return await m.reply_text(limit_message)
+            return await m.reply_text(limit_message, parse_mode=ParseMode.HTML)
 
         prompt = (m.caption or "Describe this image in detail.").strip()
         if len(prompt) > MAX_PROMPT_LENGTH:

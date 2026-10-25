@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from pyrogram import filters
+from pyrogram.enums import ParseMode
 
 from config import MAX_FILE_BYTES, MAX_EXTRACTED_CHARS
 from utils.ai import chat_completion
@@ -71,7 +72,7 @@ def register(app, bot_name: str = "default"):
             return await m.reply_text("Akses ditolak. Bot sedang dalam mode admin saja.")
         allowed, limit_message = await check_public_limit(uid)
         if not allowed:
-            return await m.reply_text(limit_message)
+            return await m.reply_text(limit_message, parse_mode=ParseMode.HTML)
 
         document = m.document
         filename = (document.file_name or "file").strip()
